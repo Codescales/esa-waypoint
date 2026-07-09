@@ -1,0 +1,17 @@
+[run]
+omit =
+    src/brief.py
+    src/brief_builder.py
+    src/check_horaro_parity.py
+    src/evaluate.py
+    src/find_incentives.py
+    src/import_to_sqlite.py
+    src/oengus.py
+    src/pipeline.py
+    src/spreadsheet.py
+
+[report]
+fail_under = 80
+precision = 1
+skip_covered = True
+show_missing = True

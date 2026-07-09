@@ -11,6 +11,7 @@ tests/websearch_todo.json
 *.db
 *.db-shm
 *.db-wal
+.coverage
 .pytest_cache/
 .venv/
 .host-server

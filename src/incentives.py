@@ -95,7 +95,7 @@ def _game_keywords(game_name: str) -> set[str]:
 def _extract_mentioned_games(text: str) -> list[str]:
     """Find capitalized game-name-like phrases in text (Title Case or ALL CAPS words)."""
     matches = re.findall(
-        r"(?:^|[\n:,;/])([A-Z][A-Za-z0-9' &]+?(?:\s+[A-Z][A-Za-z0-9' &]+?){0,4})",
+        r"(?:^|[\n:,;/])([A-Z][A-Za-z0-9' &]+(?:\s+[A-Z][A-Za-z0-9' &]+){0,4})",
         text,
     )
     cleaned = []
