@@ -268,6 +268,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "requests" },
     { name = "slowapi" },
+    { name = "sqlmodel" },
     { name = "uvicorn" },
 ]
 
@@ -299,6 +300,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "requests", specifier = ">=2.31" },
     { name = "slowapi", specifier = ">=0.1.9" },
+    { name = "sqlmodel", specifier = ">=0.0.16" },
     { name = "sqlmodel", marker = "extra == 'dev'", specifier = ">=0.0.16" },
     { name = "uvicorn", specifier = ">=0.29" },
 ]

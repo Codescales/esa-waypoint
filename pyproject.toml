@@ -12,6 +12,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "fastapi>=0.115",
     "uvicorn>=0.29",
+    "sqlmodel>=0.0.16",
 ]
 
 [project.scripts]
