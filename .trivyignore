@@ -1,0 +1,12 @@
+# Trivy vulnerability ignore list
+# These are base image CVEs (Debian slim) that are not in our application code.
+# They will be resolved when the base image publisher releases a patched version.
+
+# perl-archive-tar: Path traversal via crafted tar files
+# Affects perl-base in Debian slim; not exploitable in our container
+# (we don't use perl or Archive::Tar)
+CVE-2026-42496
+
+# perl-Archive-Tar: Arbitrary file overwrite
+# Same perl-base package, same reasoning
+CVE-2026-42497
