@@ -1,0 +1,6 @@
+[allowlist]
+description = "Allowlist for known false positives"
+paths = [
+  # Example secret in README.md (sidekiq-secret example)
+  '''(?i)README\.md$''',
+]
