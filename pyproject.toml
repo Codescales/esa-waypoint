@@ -10,6 +10,8 @@ dependencies = [
     "markdown>=3.7",
     "nh3>=0.2",
     "slowapi>=0.1.9",
+    "fastapi>=0.115",
+    "uvicorn>=0.29",
 ]
 
 [project.scripts]
