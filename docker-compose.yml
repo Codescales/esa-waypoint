@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    image: localhost/esa-incentive-pipeline_backend:latest
+    image: ghcr.io/codescales/esa-waypoint/backend:latest
     ports:
       - "8000:8000"
     environment:
@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    image: localhost/esa-incentive-pipeline_frontend:latest
+    image: ghcr.io/codescales/esa-waypoint/frontend:latest
     ports:
       - "3001:3000"
     environment:
