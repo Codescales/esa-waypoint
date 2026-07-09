@@ -4,7 +4,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 
 from .. import config
 from ..auth_admin import admin_cookie_name, current_admin, validate_admin_session
-from ..deps import get_repo
+from ..deps import get_repo, auth_required
 from ..models import IncentiveDTO, IncentivePatch, IncentiveCreateRequest
 from ..repo import IncentiveRepo
 from src import audit as audit_log
@@ -19,6 +19,7 @@ async def list_incentives(
     category: str = Query(default=""),
     stream: str = Query(default=""),
     repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
 ):
     return repo.incentives(run_slug=run_slug, status=status, category=category, stream=stream)
 
@@ -27,6 +28,7 @@ async def list_incentives(
 async def get_incentive(
     uuid: str,
     repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
 ):
     inc = repo.incentive(uuid)
     if inc is None:
@@ -40,6 +42,7 @@ async def patch_incentive(
     patch: IncentivePatch,
     repo: IncentiveRepo = Depends(get_repo),
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     is_admin = validate_admin_session(esa_admin_session)
 

@@ -90,10 +90,6 @@ def set_session_cookie(cookie: str) -> None:
     _session.headers.update({"Cookie": cookie})
 
 
-def _session_active() -> bool:
-    return _session is not None
-
-
 def _clear_session() -> None:
     """Clear the authenticated session (e.g. when token is expired)."""
     global _session

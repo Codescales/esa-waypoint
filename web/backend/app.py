@@ -6,8 +6,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from . import config
+from .limiter import limiter
 from .repo import XlsxIncentiveRepo
 from .repo_sqlite import SqliteIncentiveRepo
 from .routes import health, auth as auth_routes, streams, runs, incentives, briefs
@@ -32,6 +35,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="ESA Host Brief Viewer", version="0.2.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,7 +89,9 @@ async def llms_txt():
 
 def main():
     import uvicorn
-    uvicorn.run("web.backend.app:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    reload = os.getenv("DEBUG", "false") == "true"
+    uvicorn.run("web.backend.app:app", host="0.0.0.0", port=8000, reload=reload)
 
 
 if __name__ == "__main__":

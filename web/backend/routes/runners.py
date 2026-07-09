@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..deps import get_repo
+from ..deps import get_repo, auth_required
 from ..repo import IncentiveRepo
 
 router = APIRouter(tags=["runners"])
@@ -10,6 +10,7 @@ router = APIRouter(tags=["runners"])
 async def get_runner(
     slug: str,
     repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
 ):
     runner = repo.runner(slug)
     if runner is None:
@@ -21,6 +22,7 @@ async def get_runner(
 async def get_runner_profile(
     slug: str,
     repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
 ):
     """Return the composite runner profile (summary + stats block).
 
@@ -38,6 +40,7 @@ async def get_runner_profile(
 async def get_runner_pbs(
     slug: str,
     repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
 ):
     pbs = repo.runner_pbs(slug)
     if pbs is None:
@@ -49,5 +52,6 @@ async def get_runner_pbs(
 async def get_runner_runs(
     slug: str,
     repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
 ):
     return repo.runner_runs(slug)

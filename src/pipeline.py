@@ -26,7 +26,7 @@ import sys
 from datetime import datetime
 
 from .horaro import fetch_schedule, ScheduleItem
-from .oengus import fetch_marathon, set_auth_token, set_session_cookie, login, refresh_token, MfaRequired, _session_active, _clear_session, OengusMarathon
+from .oengus import fetch_marathon, set_auth_token, set_session_cookie, login, refresh_token, MfaRequired, _clear_session, OengusMarathon
 from .spreadsheet import generate_spreadsheet
 
 
@@ -237,6 +237,7 @@ def _save_token_to_env(token: str) -> None:
                 f.write(line)
         if not updated:
             f.write(f"OENGUS_TOKEN={token}\n")
+    os.chmod(env_path, 0o600)
     print("  Updated OENGUS_TOKEN in .env")
 
 

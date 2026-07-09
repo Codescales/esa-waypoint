@@ -11,10 +11,11 @@ services:
       - BRIEFS_DIR=/app/output/briefs
       - DB_PATH=/app/output/esa.db
       - REPO_TYPE=${REPO_TYPE:-sqlite}
-      - SHARED_PASSWORD=${SHARED_PASSWORD:-changeme}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
-      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - SHARED_PASSWORD=${SHARED_PASSWORD:?SHARED_PASSWORD is required}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      - SESSION_SECRET=${SESSION_SECRET:?SESSION_SECRET is required}
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3001}
+      - SECURE_COOKIES=${SECURE_COOKIES:-true}
     volumes:
       - ./output:/app/output:rw,z
 

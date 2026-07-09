@@ -27,7 +27,7 @@ from sqlmodel import Session, select
 
 from ..auth_admin import admin_cookie_name, validate_admin_session
 from .. import config as app_config
-from ..deps import get_repo
+from ..deps import get_repo, auth_required
 from src.db import Host, Note, Run, make_engine
 from src import audit as audit_log
 
@@ -196,6 +196,7 @@ async def list_notes(
     run_slug: str = Query(...),
     esa_session: str | None = Cookie(default=None),
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     engine = make_engine(_db_path())
     try:
@@ -217,6 +218,7 @@ async def list_notes(
 async def create_note(
     body: NoteCreateRequest,
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     stripped = body.body.strip()
     if not stripped:
@@ -264,6 +266,7 @@ async def update_note(
     note_id: int,
     body: NoteUpdateRequest,
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     stripped = body.body.strip()
     if not stripped:
@@ -301,6 +304,7 @@ async def update_note(
 async def delete_note(
     note_id: int,
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     is_admin = validate_admin_session(esa_admin_session)
     engine = make_engine(_db_path())

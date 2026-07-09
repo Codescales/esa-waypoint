@@ -5,12 +5,13 @@ All require a valid admin session cookie. See auth_admin.py.
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 import anyio
-from fastapi import APIRouter, Depends, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, Request
 from pydantic import BaseModel
 from sqlmodel import Session, select, func
 
@@ -20,6 +21,7 @@ from ..auth_admin import (
     verify_admin_password,
 )
 from ..deps import get_briefs_dir, get_repo
+from ..limiter import limiter
 from ..models import JobDTO, JobAlreadyRunningError, RunnerDTO, RunDTO
 from ..repo import IncentiveRepo
 from src import audit as audit_log
@@ -104,7 +106,8 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def admin_login(body: LoginRequest, response: Response):
+@limiter.limit("5/minute")
+async def admin_login(request: Request, body: LoginRequest, response: Response):
     if not verify_admin_password(body.password):
         raise HTTPException(status_code=401, detail="Invalid admin password")
     session = create_admin_session()
@@ -114,7 +117,7 @@ async def admin_login(body: LoginRequest, response: Response):
         max_age=config.ADMIN_SESSION_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=config.SECURE_COOKIES,
     )
     return LoginResponse(ok=True)
 
@@ -268,8 +271,13 @@ class RestoreRequest(BaseModel):
     snapshot_id: str
 
 
+_SNAPSHOT_ID_RE = re.compile(r"^\d{8}T\d{6}$")
+
+
 @router.post("/restore", response_model=RefreshResponse)
 async def admin_restore(body: RestoreRequest, _=Depends(current_admin)):
+    if not _SNAPSHOT_ID_RE.match(body.snapshot_id):
+        raise HTTPException(status_code=400, detail="Invalid snapshot_id format")
     db_path = config.DB_PATH
     output_dir = os.path.dirname(db_path)
 

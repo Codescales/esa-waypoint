@@ -7,3 +7,44 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      - id: bandit
+        name: bandit (Python SAST)
+        entry: python3 -m bandit -r src/ -ll -q
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: pip-audit
+        name: pip-audit (Python dependency CVEs)
+        entry: python3 -m pip_auth --desc on -r <(python3 -m pip freeze 2>/dev/null)
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [manual]
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.3
+    hooks:
+      - id: python-safety-dependencies-check
+        args: [--disable-optional-cr]
+        stages: [manual]
+
+      - id: hadolint-backend
+        name: hadolint (Dockerfile.backend)
+        entry: hadolint Dockerfile.backend
+        language: system
+        files: ^Dockerfile\.backend$
+
+      - id: hadolint-frontend
+        name: hadolint (Dockerfile.frontend)
+        entry: hadolint Dockerfile.frontend
+        language: system
+        files: ^Dockerfile\.frontend$
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secret scanning)
+        args: [--verbose]

@@ -22,8 +22,9 @@ def write_audit(output_dir: str, action: str, detail: str) -> None:
     try:
         os.makedirs(output_dir, exist_ok=True)
         ts = datetime.now(TZ).isoformat()
+        sanitized = detail.replace("\n", " ").replace("\r", " ")
         with open(audit_log_path(output_dir), "a") as f:
-            f.write(f"{ts} | {action} | {detail}\n")
+            f.write(f"{ts} | {action} | {sanitized}\n")
     except OSError:
         pass  # Audit logging is best-effort
 

@@ -27,6 +27,7 @@ from sqlmodel import Session, select
 
 from ..auth_admin import validate_admin_session
 from .. import config as app_config
+from ..deps import auth_required
 from src.db import Host, Runner, RunnerNote, make_engine
 from src import audit as audit_log
 
@@ -154,6 +155,7 @@ def _resolve_current_host_id() -> int:
 async def list_runner_notes(
     runner_slug: str = Query(...),
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     engine = make_engine(_db_path())
     try:
@@ -177,6 +179,7 @@ async def list_runner_notes(
 async def create_runner_note(
     body: RunnerNoteCreateRequest,
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     stripped = body.body.strip()
     if not stripped:
@@ -223,6 +226,7 @@ async def update_runner_note(
     note_id: int,
     body: RunnerNoteUpdateRequest,
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     stripped = body.body.strip()
     if not stripped:
@@ -259,6 +263,7 @@ async def update_runner_note(
 async def delete_runner_note(
     note_id: int,
     esa_admin_session: str | None = Cookie(default=None, alias="esa_admin_session"),
+    _=auth_required,
 ):
     is_admin = validate_admin_session(esa_admin_session)
     engine = make_engine(_db_path())

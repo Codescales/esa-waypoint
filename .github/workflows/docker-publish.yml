@@ -43,6 +43,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Trivy scan backend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/backend:latest
+          format: table
+          exit-code: 1
+          severity: HIGH,CRITICAL
+
       - name: Build and push frontend
         uses: docker/build-push-action@v6
         with:
@@ -53,3 +61,11 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trivy scan frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/frontend:latest
+          format: table
+          exit-code: 1
+          severity: HIGH,CRITICAL
