@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-
-const PASSWORD = process.env.NEXT_PUBLIC_ESA_PASSWORD || "testpass";
+import { login as apiLogin } from "@/lib/api";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -11,20 +10,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    if (sessionStorage.getItem("esa-auth") === "1") {
-      router.replace("/");
-    }
-  }, [router]);
-
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    if (password === PASSWORD) {
+    try {
+      await apiLogin(password);
       sessionStorage.setItem("esa-auth", "1");
       router.push("/");
-    } else {
+    } catch {
       setError("Invalid password");
       setLoading(false);
     }
