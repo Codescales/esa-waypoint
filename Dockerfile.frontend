@@ -13,10 +13,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_URL=http://backend:8000
 
+RUN addgroup -S app && adduser -S -G app app
+
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
+USER app
 EXPOSE 3000
 
 CMD ["node", "server.js"]
