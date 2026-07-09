@@ -40,7 +40,7 @@ export default function AdminPage() {
   const jobsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const syncIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
-  async function refreshStatus() {
+  async function refreshStatus(): Promise<boolean> {
     try {
       const [s, sn, au] = await Promise.all([
         adminStatus(),
@@ -50,8 +50,10 @@ export default function AdminPage() {
       setStatus(s);
       setSnapshots(sn);
       setAudit(au);
-    } catch (e) {
+      return true;
+    } catch {
       setAuthed(false);
+      return false;
     }
   }
 
@@ -65,7 +67,9 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    refreshStatus().then(() => setAuthed(true));
+    refreshStatus().then((ok) => {
+      if (ok) setAuthed(true);
+    });
   }, []);
 
   useEffect(() => {
