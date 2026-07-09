@@ -1,0 +1,18 @@
+# Frontend heavy dirs
+web/frontend/node_modules/
+web/frontend/.next/
+
+# Backend artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Git
+.git/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

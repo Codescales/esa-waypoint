@@ -1,0 +1,2129 @@
+openapi: 3.1.0
+info:
+  title: ESA Host Brief Viewer
+  version: 0.2.0
+  description: 'ESA Incentive Pipeline backend API.
+
+
+    **Authentication**
+
+
+    - Host endpoints: require `esa_session` cookie (set via `POST /api/login`). Valid
+    24h.
+
+    - Admin endpoints: require `esa_admin_session` cookie (set via `POST /api/admin/login`).
+    Valid 1h.
+
+
+    **Base URL**: `https://esa-hosting.codescales.xyz`
+
+
+    **AI/Tool discovery**
+
+
+    - OpenAPI spec (this file): `GET /openapi.yaml`
+
+    - Natural-language context doc: `GET /llms.txt`
+
+    - Interactive UI: `GET /docs`'
+  contact:
+    name: ESA Incentive Pipeline
+    url: https://github.com/BongoEADGC6/esa-incentive-pipeline
+paths:
+  /api/health:
+    get:
+      tags:
+      - health
+      summary: Health
+      operationId: health_api_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaleInfo'
+  /api/login:
+    post:
+      tags:
+      - auth
+      summary: Login
+      operationId: login_api_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/logout:
+    post:
+      tags:
+      - auth
+      summary: Logout
+      operationId: logout_api_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/streams:
+    get:
+      tags:
+      - streams
+      summary: List Streams
+      operationId: list_streams_api_streams_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /api/runs:
+    get:
+      tags:
+      - runs
+      summary: List Runs
+      operationId: list_runs_api_runs_get
+      parameters:
+      - name: stream
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Stream
+      - name: window
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Window
+      - name: next_hours
+        in: query
+        required: false
+        schema:
+          type: number
+          default: 0
+          title: Next Hours
+      - name: marathon
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Marathon
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/runs/{slug}:
+    get:
+      tags:
+      - runs
+      summary: Get Run
+      operationId: get_run_api_runs__slug__get
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/incentives:
+    get:
+      tags:
+      - incentives
+      summary: List Incentives
+      operationId: list_incentives_api_incentives_get
+      parameters:
+      - name: run_slug
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Run Slug
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Status
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Category
+      - name: stream
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Stream
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncentiveDTO'
+                title: Response List Incentives Api Incentives Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - incentives
+      summary: Create Incentive
+      operationId: create_incentive_api_incentives_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncentiveCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncentiveDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/incentives/{uuid}:
+    get:
+      tags:
+      - incentives
+      summary: Get Incentive
+      operationId: get_incentive_api_incentives__uuid__get
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncentiveDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - incentives
+      summary: Patch Incentive
+      operationId: patch_incentive_api_incentives__uuid__patch
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Uuid
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncentivePatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncentiveDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - incentives
+      summary: Delete Incentive
+      operationId: delete_incentive_api_incentives__uuid__delete
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Uuid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncentiveDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/briefs/{slug}:
+    get:
+      tags:
+      - briefs
+      summary: Get Brief
+      operationId: get_brief_api_briefs__slug__get
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/briefs:
+    get:
+      tags:
+      - briefs
+      summary: List Briefs
+      operationId: list_briefs_api_briefs_get
+      parameters:
+      - name: shift
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Shift
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefIndexResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/notes/active-host:
+    get:
+      tags:
+      - notes
+      summary: Get Active Host
+      description: 'Return the currently active host (the host that new notes will
+        be attributed to).
+
+
+        Phase 2.4: returns the first active host (Anonymous Host). When OIDC
+
+        ships, this returns the authenticated user.'
+      operationId: get_active_host_api_notes_active_host_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveHostDTO'
+  /api/notes:
+    get:
+      tags:
+      - notes
+      summary: List Notes
+      operationId: list_notes_api_notes_get
+      parameters:
+      - name: run_slug
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Run Slug
+      - name: esa_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Session
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NoteDTO'
+                title: Response List Notes Api Notes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - notes
+      summary: Create Note
+      operationId: create_note_api_notes_post
+      parameters:
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteCreateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/notes/{note_id}:
+    patch:
+      tags:
+      - notes
+      summary: Update Note
+      operationId: update_note_api_notes__note_id__patch
+      parameters:
+      - name: note_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Note Id
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - notes
+      summary: Delete Note
+      operationId: delete_note_api_notes__note_id__delete
+      parameters:
+      - name: note_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Note Id
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/runner-notes:
+    get:
+      tags:
+      - runner_notes
+      summary: List Runner Notes
+      operationId: list_runner_notes_api_runner_notes_get
+      parameters:
+      - name: runner_slug
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Runner Slug
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunnerNoteDTO'
+                title: Response List Runner Notes Api Runner Notes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - runner_notes
+      summary: Create Runner Note
+      operationId: create_runner_note_api_runner_notes_post
+      parameters:
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunnerNoteCreateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunnerNoteDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/runner-notes/{note_id}:
+    patch:
+      tags:
+      - runner_notes
+      summary: Update Runner Note
+      operationId: update_runner_note_api_runner_notes__note_id__patch
+      parameters:
+      - name: note_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Note Id
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunnerNoteUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunnerNoteDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - runner_notes
+      summary: Delete Runner Note
+      operationId: delete_runner_note_api_runner_notes__note_id__delete
+      parameters:
+      - name: note_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Note Id
+      - name: esa_admin_session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Esa Admin Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/login:
+    post:
+      tags:
+      - admin
+      summary: Admin Login
+      operationId: admin_login_api_admin_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/logout:
+    post:
+      tags:
+      - admin
+      summary: Admin Logout
+      operationId: admin_logout_api_admin_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+  /api/admin/status:
+    get:
+      tags:
+      - admin
+      summary: Admin Status
+      operationId: admin_status_api_admin_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DBStatus'
+  /api/admin/refresh:
+    post:
+      tags:
+      - admin
+      summary: Admin Refresh
+      operationId: admin_refresh_api_admin_refresh_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+  /api/admin/snapshots:
+    get:
+      tags:
+      - admin
+      summary: Admin Snapshots
+      operationId: admin_snapshots_api_admin_snapshots_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/SnapshotDTO'
+                type: array
+                title: Response Admin Snapshots Api Admin Snapshots Get
+  /api/admin/restore:
+    post:
+      tags:
+      - admin
+      summary: Admin Restore
+      operationId: admin_restore_api_admin_restore_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestoreRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/audit:
+    get:
+      tags:
+      - admin
+      summary: Admin Audit
+      operationId: admin_audit_api_admin_audit_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntry'
+                title: Response Admin Audit Api Admin Audit Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/hosts:
+    get:
+      tags:
+      - admin
+      summary: Admin List Hosts
+      operationId: admin_list_hosts_api_admin_hosts_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/HostDTO'
+                type: array
+                title: Response Admin List Hosts Api Admin Hosts Get
+    post:
+      tags:
+      - admin
+      summary: Admin Create Host
+      operationId: admin_create_host_api_admin_hosts_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HostCreateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/hosts/{host_id}:
+    delete:
+      tags:
+      - admin
+      summary: Admin Deactivate Host
+      operationId: admin_deactivate_host_api_admin_hosts__host_id__delete
+      parameters:
+      - name: host_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Host Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/jobs:
+    get:
+      tags:
+      - admin
+      summary: List Jobs
+      operationId: list_jobs_api_admin_jobs_get
+      parameters:
+      - name: kind
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Kind
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Status
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobDTO'
+                title: Response List Jobs Api Admin Jobs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/jobs/{id}:
+    get:
+      tags:
+      - admin
+      summary: Get Job
+      operationId: get_job_api_admin_jobs__id__get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/jobs/{id}/cancel:
+    post:
+      tags:
+      - admin
+      summary: Cancel Job
+      operationId: cancel_job_api_admin_jobs__id__cancel_post
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/admin/sync/schedule:
+    post:
+      tags:
+      - admin
+      summary: Sync Schedule
+      operationId: sync_schedule_api_admin_sync_schedule_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDTO'
+  /api/admin/sync/briefs:
+    post:
+      tags:
+      - admin
+      summary: Sync Briefs
+      operationId: sync_briefs_api_admin_sync_briefs_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDTO'
+  /api/admin/sync/runners:
+    post:
+      tags:
+      - admin
+      summary: Sync Runners
+      operationId: sync_runners_api_admin_sync_runners_post
+      parameters:
+      - name: slug
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/runners/{slug}:
+    get:
+      tags:
+      - runners
+      summary: Get Runner
+      operationId: get_runner_api_runners__slug__get
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunnerDTOResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      description: 'Returns runner identity and **current-marathon** run counts only.
+
+
+        - `run_count` — number of runs in this event''s schedule
+
+        - `esa_count` — distinct streams in this event (not all-time event count)
+
+        - `first_esa` — earliest scheduled run date in the current marathon
+
+
+        For all-time historical data (17 events, 26 appearances, first debut year,
+        country, SRC tenure, ESA run history) call **GET /api/runners/{slug}/profile**.'
+  /api/runners/{slug}/profile:
+    get:
+      tags:
+      - runners
+      summary: Get Runner Profile
+      description: 'Returns the full composite runner profile sourced from lineup.esamarathon.dev
+        and speedrun.com.
+
+
+        This is the authoritative source for all historical ESA data:
+
+
+        - `summary.event_count` — all-time ESA events attended
+
+        - `summary.appearance_count` — all-time ESA run appearances
+
+        - `summary.first_event` / `first_event_year` — historical debut
+
+        - `summary.esa_game_count` — distinct games run at ESA across all events
+
+        - `summary.country_name` — self-reported, unverified
+
+        - `summary.src_tenure_years` — years on speedrun.com
+
+        - `stats.past_esa.events[]` — ordered list of all event names attended
+
+        - `stats.past_esa.esa_runs[]` — per-game/category history with event list
+
+        - `stats.past_esa.first_appearance` — full details of debut run
+
+        - `stats.tenure.label` — human-readable SRC tenure string
+
+        - `stats.communities[]` — ESA-adjacent communities found in SRC/Twitch bio
+
+
+        `has_profile: false` means no runner-profile cache entry exists; trigger `POST
+        /api/admin/sync/runners?slug={slug}` to populate it.'
+      operationId: get_runner_profile_api_runners__slug__profile_get
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunnerProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/runners/{slug}/pbs:
+    get:
+      tags:
+      - runners
+      summary: Get Runner Pbs
+      operationId: get_runner_pbs_api_runners__slug__pbs_get
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunnerPBsResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/runners/{slug}/runs:
+    get:
+      tags:
+      - runners
+      summary: Get Runner Runs
+      operationId: get_runner_runs_api_runners__slug__runs_get
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Slug
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RunDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    ActiveHostDTO:
+      properties:
+        id:
+          type: integer
+          title: Id
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - id
+      - name
+      title: ActiveHostDTO
+    AuditEntry:
+      properties:
+        timestamp:
+          type: string
+          title: Timestamp
+        action:
+          type: string
+          title: Action
+        detail:
+          type: string
+          title: Detail
+      type: object
+      required:
+      - timestamp
+      - action
+      - detail
+      title: AuditEntry
+    DBStatus:
+      properties:
+        db_size_bytes:
+          type: integer
+          title: Db Size Bytes
+        db_exists:
+          type: boolean
+          title: Db Exists
+        db_healthy:
+          type: boolean
+          title: Db Healthy
+        schema_version:
+          type: integer
+          title: Schema Version
+        last_import_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Import At
+        counts:
+          additionalProperties: true
+          type: object
+          title: Counts
+      type: object
+      required:
+      - db_size_bytes
+      - db_exists
+      - db_healthy
+      - schema_version
+      - counts
+      title: DBStatus
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HostCreateRequest:
+      properties:
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - name
+      title: HostCreateRequest
+    HostDTO:
+      properties:
+        id:
+          type: integer
+          title: Id
+        name:
+          type: string
+          title: Name
+        is_active:
+          type: boolean
+          title: Is Active
+        created_at:
+          type: string
+          title: Created At
+      type: object
+      required:
+      - id
+      - name
+      - is_active
+      - created_at
+      title: HostDTO
+    IncentiveCreateRequest:
+      properties:
+        run_slug:
+          type: string
+          title: Run Slug
+        incentive_text:
+          type: string
+          title: Incentive Text
+        incentive_category:
+          type: string
+          title: Incentive Category
+          default: ''
+        valid_for_game:
+          type: string
+          title: Valid For Game
+          default: ''
+        incentive_estimate:
+          type: string
+          title: Incentive Estimate
+          default: ''
+        status:
+          type: string
+          title: Status
+          default: ''
+      type: object
+      required:
+      - run_slug
+      - incentive_text
+      title: IncentiveCreateRequest
+      description: Fields required to create a new incentive.
+    IncentiveDTO:
+      properties:
+        scheduled:
+          type: string
+          format: date-time
+          title: Scheduled
+        game:
+          type: string
+          title: Game
+        category:
+          type: string
+          title: Category
+        stream:
+          type: string
+          title: Stream
+        runner_display:
+          type: string
+          title: Runner Display
+        runner_twitch:
+          type: string
+          title: Runner Twitch
+        runner_discord:
+          type: string
+          title: Runner Discord
+        runner_slug:
+          type: string
+          title: Runner Slug
+          default: ''
+        incentive_text:
+          type: string
+          title: Incentive Text
+        incentive_category:
+          type: string
+          title: Incentive Category
+        valid_for_game:
+          type: string
+          title: Valid For Game
+        incentive_estimate:
+          type: string
+          title: Incentive Estimate
+        needs_approval:
+          type: string
+          title: Needs Approval
+        status:
+          type: string
+          title: Status
+        submission_id:
+          type: string
+          title: Submission Id
+        uuid:
+          type: string
+          title: Uuid
+        run_slug:
+          type: string
+          title: Run Slug
+          default: ''
+        participants:
+          items:
+            $ref: '#/components/schemas/ParticipantDTO'
+          type: array
+          title: Participants
+          default: []
+      type: object
+      required:
+      - scheduled
+      - game
+      - category
+      - stream
+      - runner_display
+      - runner_twitch
+      - runner_discord
+      - incentive_text
+      - incentive_category
+      - valid_for_game
+      - incentive_estimate
+      - needs_approval
+      - status
+      - submission_id
+      - uuid
+      title: IncentiveDTO
+    IncentivePatch:
+      properties:
+        incentive_category:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incentive Category
+        valid_for_game:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Valid For Game
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        incentive_estimate:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incentive Estimate
+      type: object
+      title: IncentivePatch
+      description: Editable fields on an incentive. All optional — only set fields
+        are updated.
+    JobDTO:
+      properties:
+        id:
+          type: string
+          title: Id
+        kind:
+          type: string
+          title: Kind
+        status:
+          type: string
+          title: Status
+        target:
+          type: string
+          title: Target
+        summary_json:
+          type: string
+          title: Summary Json
+        error:
+          type: string
+          title: Error
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Completed At
+      type: object
+      required:
+      - id
+      - kind
+      - status
+      - target
+      - summary_json
+      - error
+      - created_at
+      - updated_at
+      - completed_at
+      title: JobDTO
+    LoginRequest:
+      properties:
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - password
+      title: LoginRequest
+    LoginResponse:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+      type: object
+      required:
+      - ok
+      title: LoginResponse
+    NoteCreateRequest:
+      properties:
+        run_slug:
+          type: string
+          title: Run Slug
+        body:
+          type: string
+          maxLength: 10000
+          minLength: 1
+          title: Body
+        host_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Host Id
+      type: object
+      required:
+      - run_slug
+      - body
+      title: NoteCreateRequest
+    NoteDTO:
+      properties:
+        id:
+          type: integer
+          title: Id
+        run_slug:
+          type: string
+          title: Run Slug
+        host_id:
+          type: integer
+          title: Host Id
+        host_name:
+          type: string
+          title: Host Name
+        body:
+          type: string
+          title: Body
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+        is_own:
+          type: boolean
+          title: Is Own
+          default: false
+        can_edit:
+          type: boolean
+          title: Can Edit
+          default: false
+      type: object
+      required:
+      - id
+      - run_slug
+      - host_id
+      - host_name
+      - body
+      - created_at
+      - updated_at
+      title: NoteDTO
+    NoteUpdateRequest:
+      properties:
+        body:
+          type: string
+          maxLength: 10000
+          minLength: 1
+          title: Body
+      type: object
+      required:
+      - body
+      title: NoteUpdateRequest
+    ParticipantDTO:
+      properties:
+        slug:
+          type: string
+          title: Slug
+          default: ''
+        display_name:
+          type: string
+          title: Display Name
+          default: ''
+        twitch:
+          type: string
+          title: Twitch
+          default: ''
+        discord:
+          type: string
+          title: Discord
+          default: ''
+        twitter:
+          type: string
+          title: Twitter
+          default: ''
+        pronouns:
+          type: string
+          title: Pronouns
+          default: ''
+        pronunciation:
+          type: string
+          title: Pronunciation
+          default: ''
+        submission_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Submission Id
+        match_confidence:
+          type: string
+          title: Match Confidence
+          default: ''
+      type: object
+      title: ParticipantDTO
+    RefreshResponse:
+      properties:
+        ok:
+          type: boolean
+          title: Ok
+        snapshot_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Snapshot Id
+        runs_added:
+          type: integer
+          title: Runs Added
+        runs_updated:
+          type: integer
+          title: Runs Updated
+        incentives_added:
+          type: integer
+          title: Incentives Added
+        incentives_updated:
+          type: integer
+          title: Incentives Updated
+        error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+      type: object
+      required:
+      - ok
+      - runs_added
+      - runs_updated
+      - incentives_added
+      - incentives_updated
+      title: RefreshResponse
+    RestoreRequest:
+      properties:
+        snapshot_id:
+          type: string
+          title: Snapshot Id
+      type: object
+      required:
+      - snapshot_id
+      title: RestoreRequest
+    RunnerNoteCreateRequest:
+      properties:
+        runner_slug:
+          type: string
+          title: Runner Slug
+        body:
+          type: string
+          maxLength: 10000
+          minLength: 1
+          title: Body
+        host_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Host Id
+      type: object
+      required:
+      - runner_slug
+      - body
+      title: RunnerNoteCreateRequest
+    RunnerNoteDTO:
+      properties:
+        id:
+          type: integer
+          title: Id
+        runner_slug:
+          type: string
+          title: Runner Slug
+        host_id:
+          type: integer
+          title: Host Id
+        host_name:
+          type: string
+          title: Host Name
+        body:
+          type: string
+          title: Body
+        created_at:
+          type: string
+          title: Created At
+        updated_at:
+          type: string
+          title: Updated At
+        is_own:
+          type: boolean
+          title: Is Own
+          default: false
+        can_edit:
+          type: boolean
+          title: Can Edit
+          default: false
+      type: object
+      required:
+      - id
+      - runner_slug
+      - host_id
+      - host_name
+      - body
+      - created_at
+      - updated_at
+      title: RunnerNoteDTO
+    RunnerNoteUpdateRequest:
+      properties:
+        body:
+          type: string
+          maxLength: 10000
+          minLength: 1
+          title: Body
+      type: object
+      required:
+      - body
+      title: RunnerNoteUpdateRequest
+    SnapshotDTO:
+      properties:
+        id:
+          type: string
+          title: Id
+        size_bytes:
+          type: integer
+          title: Size Bytes
+        age_hours:
+          type: number
+          title: Age Hours
+        schema_version:
+          type: integer
+          title: Schema Version
+      type: object
+      required:
+      - id
+      - size_bytes
+      - age_hours
+      - schema_version
+      title: SnapshotDTO
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    RunnerSummary:
+      type: object
+      description: Headline statistics sourced from lineup.esamarathon.dev + speedrun.com.
+      properties:
+        event_count:
+          type: integer
+          description: Distinct ESA events attended (all-time)
+        appearance_count:
+          type: integer
+          description: Total run appearances at ESA (all-time)
+        first_event:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Name of first ESA event, e.g. "ESA 2013"
+        first_event_year:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        years_active:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        pb_count:
+          type: integer
+        pb_game_count:
+          type: integer
+        src_tenure_years:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Years on speedrun.com
+        community_count:
+          type: integer
+        country_code:
+          anyOf:
+          - type: string
+          - type: 'null'
+        country_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Self-reported; unverified
+        esa_game_count:
+          type: integer
+          description: Distinct games run at ESA (all-time)
+        esa_category_count:
+          type: integer
+    EsaRunEntry:
+      type: object
+      properties:
+        game:
+          type: string
+        category:
+          type: string
+        count:
+          type: integer
+          description: Number of times run at ESA
+        events:
+          type: array
+          items:
+            type: string
+          description: Event slugs
+    PastEsaStats:
+      type: object
+      properties:
+        event_count:
+          type: integer
+        appearance_count:
+          type: integer
+        first_event:
+          anyOf:
+          - type: string
+          - type: 'null'
+        first_event_year:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        events:
+          type: array
+          items:
+            type: string
+          description: Ordered list of event names attended
+        first_appearance:
+          anyOf:
+          - type: object
+            properties:
+              event_slug:
+                type: string
+              event_name:
+                type: string
+              event_start:
+                type: string
+                format: date-time
+              scheduled:
+                type: string
+                format: date-time
+              game:
+                type: string
+              category:
+                type: string
+              estimate:
+                type: string
+              stream:
+                type: string
+              match:
+                type: string
+                enum:
+                - lineup
+                - horaro
+          - type: 'null'
+        esa_runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/EsaRunEntry'
+        esa_game_count:
+          type: integer
+        esa_category_count:
+          type: integer
+        sources:
+          type: array
+          items:
+            type: string
+        verified:
+          type: boolean
+    RunnerStats:
+      type: object
+      description: Detailed breakdown from runner-profile CLI (lineup + SRC). Each
+        sub-key carries available/verified flags.
+      properties:
+        past_esa:
+          anyOf:
+          - $ref: '#/components/schemas/PastEsaStats'
+          - type: 'null'
+        tenure:
+          anyOf:
+          - type: object
+            properties:
+              available:
+                type: boolean
+              signup:
+                anyOf:
+                - type: string
+                  format: date
+                - type: 'null'
+              years:
+                anyOf:
+                - type: integer
+                - type: 'null'
+              label:
+                type: string
+                description: Human-readable, e.g. "11 years on speedrun.com (since
+                  2014-09-02)"
+          - type: 'null'
+        communities:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              source:
+                type: string
+              evidence:
+                type: string
+        country:
+          anyOf:
+          - type: object
+            properties:
+              code:
+                anyOf:
+                - type: string
+                - type: 'null'
+              name:
+                anyOf:
+                - type: string
+                - type: 'null'
+              source:
+                type: string
+              confidence:
+                type: string
+          - type: 'null'
+        personal_bests:
+          anyOf:
+          - type: object
+            properties:
+              game_count:
+                type: integer
+              category_count:
+                type: integer
+              top_games:
+                type: array
+                items:
+                  type: string
+          - type: 'null'
+    RunnerProfileResponse:
+      type: object
+      description: 'Composite runner profile returned by GET /api/runners/{slug}/profile.
+
+
+        This is the authoritative source for **all historical ESA data**: event counts,
+        run history, first appearance, ESA games, country, community, and SRC tenure.
+        The run_count/esa_count fields on RunnerDTO (GET /api/runners/{slug}) are
+        scoped to the **current marathon only** — use this endpoint for all-time figures.'
+      required:
+      - slug
+      - display_name
+      - twitch
+      - discord
+      - twitter
+      - pronouns
+      - sources
+      - errors
+      - has_profile
+      properties:
+        slug:
+          type: string
+        display_name:
+          type: string
+        twitch:
+          type: string
+        discord:
+          type: string
+        twitter:
+          type: string
+        pronouns:
+          type: string
+        pronunciation:
+          type: string
+        summary:
+          anyOf:
+          - $ref: '#/components/schemas/RunnerSummary'
+          - type: 'null'
+        stats:
+          anyOf:
+          - $ref: '#/components/schemas/RunnerStats'
+          - type: 'null'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/BriefSidecarSource'
+        errors:
+          type: array
+          items:
+            type: string
+        has_profile:
+          type: boolean
+          description: False when no runner-profile cache entry exists for this runner
+    RunnerDTOResponse:
+      type: object
+      description: 'Runner identity and **current-marathon** run summary.
+
+
+        **run_count** and **esa_count** reflect only runs in this event''s schedule.
+        For all-time ESA history (17 events, 26 runs, first year, etc.) call GET /api/runners/{slug}/profile
+        which reads from the runner-profile cache.'
+      required:
+      - slug
+      - display_name
+      - twitch
+      - discord
+      - twitter
+      - pronouns
+      properties:
+        slug:
+          type: string
+        display_name:
+          type: string
+        twitch:
+          type: string
+        discord:
+          type: string
+        twitter:
+          type: string
+        pronouns:
+          type: string
+        pronunciation:
+          type: string
+        run_count:
+          type: integer
+          description: Runs in the **current marathon** only
+        esa_count:
+          type: integer
+          description: Distinct streams in the **current marathon** only. For all-time
+            event count see /profile
+        first_esa:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Date of first scheduled run in the current marathon (not historical
+            debut)
+        upcoming_runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunDTO'
+          description: Next 5 upcoming runs for this runner
+    RunnerPBsResponse:
+      type: object
+      required:
+      - slug
+      - display_name
+      - pbs
+      - has_pbs
+      properties:
+        slug:
+          type: string
+        display_name:
+          type: string
+        pbs:
+          type: array
+          items:
+            $ref: '#/components/schemas/RunnerPBEntry'
+        has_pbs:
+          type: boolean
+  securitySchemes:
+    hostSession:
+      type: apiKey
+      in: cookie
+      name: esa_session
+      description: Set via POST /api/login. Valid 24h.
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: esa_admin_session
+      description: Set via POST /api/admin/login. Valid 1h.
+servers:
+- url: https://esa-hosting.codescales.xyz
+  description: Production
+tags:
+- name: health
+  description: Spreadsheet staleness check
+- name: auth
+  description: Host session login/logout
+- name: streams
+  description: Available stream identifiers
+- name: runs
+  description: Schedule runs
+- name: incentives
+  description: Run incentives (CRUD)
+- name: briefs
+  description: Host brief prose + structured sidecar
+- name: runners
+  description: Runner identity, profile, PBs, and upcoming runs
+- name: notes
+  description: Per-run host notes
+- name: runner_notes
+  description: Per-runner host notes
+- name: admin
+  description: 'Admin-only: DB management, sync jobs, host management'

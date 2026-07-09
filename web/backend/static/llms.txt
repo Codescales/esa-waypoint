@@ -1,0 +1,183 @@
+# ESA Incentive Pipeline — AI Agent Context
+
+## What this system is
+
+The ESA Incentive Pipeline is the internal tooling for **ESA (European Speedrunner Assembly)** marathons.
+It ingests the accepted run schedule from Oengus and Horaro, manages donation incentives, and provides
+host-facing briefs and runner data for use during the live event.
+
+This API is the backend for the web viewer used by ESA hosts and admins during the marathon.
+
+**Production base URL**: `https://esa-hosting.codescales.xyz`
+**OpenAPI spec**: `https://esa-hosting.codescales.xyz/openapi.yaml`
+**Interactive docs**: `https://esa-hosting.codescales.xyz/docs` (FastAPI Swagger UI)
+
+---
+
+## Authentication
+
+Two cookie-based sessions. Both are set via POST — no Bearer tokens.
+
+| Session cookie     | Set via                  | Lifetime | Scope                        |
+|--------------------|--------------------------|----------|------------------------------|
+| `esa_session`      | `POST /api/login`        | 24 h     | Read data, write notes       |
+| `esa_admin_session`| `POST /api/admin/login`  | 1 h      | Admin sync, DB management    |
+
+Passwords are shared secrets configured via environment variables (`SHARED_PASSWORD`, `ADMIN_PASSWORD`).
+Pass `credentials: "include"` (or equivalent) on all requests.
+
+---
+
+## Core domain concepts
+
+### Run
+A scheduled speedrun at the marathon. Key fields:
+- `slug` — URL-safe identifier, e.g. `dragon-ball-z-budokai-3__goku-s-story-z3-breakthrough__2026-08-01T1400`
+- `scheduled` — ISO 8601 datetime (Europe/Stockholm timezone)
+- `estimate` — HH:MM:SS string
+- `stream` / `stream_short` — which stream this run is on (e.g. `stream1`)
+- `participants[]` — array of runners (multi-runner races/co-op supported)
+
+### Runner
+A person running a game. Key fields:
+- `slug` — derived from Twitch handle (lowercase) or `player-<display>-<id>` fallback
+- `stats_json` — JSON blob from `runner-profile` CLI containing `summary` + `stats`
+
+### Incentive
+A donation incentive attached to a run. Categories: `Reward`, `Poll-Bid War`, `Target`.
+Status lifecycle: `To-Do` → `In Review` → `Approved`.
+
+### Brief
+A host-facing document for each run. Two parts:
+- `prose_md` — markdown text for the host
+- `sidecar` — structured JSON with interview material, WR data, siblings, sources, confidence flags
+
+---
+
+## Key endpoints
+
+### Schedule
+```
+GET /api/runs                          # All runs (optional: stream, window, next_hours, marathon=true)
+GET /api/runs/{slug}                   # Single run
+GET /api/streams                       # Available stream identifiers
+```
+
+### Runners
+```
+GET /api/runners/{slug}                # Identity + run count + upcoming runs
+GET /api/runners/{slug}/profile        # Composite profile: summary stats + ESA history + tenure + PBs
+GET /api/runners/{slug}/pbs            # Full speedrun.com personal bests table
+GET /api/runners/{slug}/runs           # Upcoming runs for this runner
+```
+
+The `/profile` endpoint returns:
+- `summary.event_count` — ESA events attended
+- `summary.appearance_count` — total ESA run appearances
+- `summary.first_event_year` — year of debut
+- `summary.country_name` — self-reported, unverified
+- `stats.past_esa.esa_runs[]` — per-game/category ESA history
+- `stats.past_esa.events[]` — ordered list of event names
+- `stats.past_esa.first_appearance` — first run details
+- `stats.tenure.label` — e.g. "11 years on speedrun.com (since 2014-09-02)"
+- `stats.communities[]` — ESA-adjacent communities found in SRC/Twitch bio
+
+### Incentives
+```
+GET    /api/incentives                 # All incentives (optional: run_slug, status, category, stream)
+GET    /api/incentives/{uuid}          # Single incentive
+POST   /api/incentives                 # Create (host session required)
+PATCH  /api/incentives/{uuid}          # Edit category/status/estimate (host session required)
+DELETE /api/incentives/{uuid}          # Soft-delete (host session required)
+```
+
+### Briefs
+```
+GET /api/briefs/{slug}                 # Full brief for a run (prose_md + sidecar JSON)
+GET /api/briefs                        # Brief index (optional: shift parameter)
+```
+
+### Notes
+```
+GET    /api/notes?run_slug={slug}      # Host notes for a run
+POST   /api/notes                      # Create note
+PATCH  /api/notes/{id}                 # Edit own note
+DELETE /api/notes/{id}                 # Delete own note
+
+GET    /api/runner-notes?runner_slug={slug}   # Per-runner notes
+POST   /api/runner-notes
+PATCH  /api/runner-notes/{id}
+DELETE /api/runner-notes/{id}
+```
+
+### Admin (requires admin session)
+```
+GET  /api/admin/status                 # DB health, schema version, row counts
+POST /api/admin/refresh                # Re-import xlsx → SQLite (async job)
+POST /api/admin/sync/schedule          # Pull schedule from Horaro/Oengus
+POST /api/admin/sync/briefs            # Regenerate host briefs
+POST /api/admin/sync/runners           # Refresh runner profiles from SRC/lineup
+GET  /api/admin/jobs                   # List background jobs
+GET  /api/admin/jobs/{id}              # Poll job status (status: pending|running|completed|failed)
+POST /api/admin/jobs/{id}/cancel       # Cancel a running job
+GET  /api/admin/snapshots              # List DB snapshots
+POST /api/admin/restore                # Restore from snapshot
+GET  /api/admin/audit                  # Audit log (incentive/admin changes)
+```
+
+---
+
+## Data sources and confidence
+
+All runner profile data is sourced from:
+1. **lineup.esamarathon.dev** — authoritative ESA attendance (event counts, country, first appearance)
+2. **horaro.net** — fallback schedule scanning for older events
+3. **speedrun.com** — PBs, tenure, community bio markers
+
+Confidence levels on runner profiles:
+- `high` — strong SRC match + lineup data
+- `moderate` — partial match or display-name-only lookup
+- `none` — lineup data only, no SRC account found
+
+Claims marked `has_profile: false` have no verified data. Tenure marked "Not found — ask the runner"
+when SRC lookup failed.
+
+Country is always `(unverified)` — it is self-reported on the lineup form.
+
+---
+
+## Slug patterns
+
+Run slugs follow the pattern: `{game-slug}__{category-slug}__{YYYY-MM-DDTHHMM}`
+
+Runner slugs:
+- Twitch handle (lowercase) if available — e.g. `tharixer`
+- `player-{display-slug}-{run-id}` fallback for runners without Twitch
+
+---
+
+## Useful queries for AI agents
+
+**Get the full marathon schedule:**
+```
+GET /api/runs?marathon=true
+```
+
+**Get a runner's complete ESA history:**
+```
+GET /api/runners/{slug}/profile
+→ stats.past_esa.esa_runs[]
+→ stats.past_esa.events[]
+```
+
+**Get approved incentives for a stream:**
+```
+GET /api/incentives?stream=stream1&status=Approved
+```
+
+**Poll a sync job until complete:**
+```
+POST /api/admin/sync/runners
+→ { id: "...", status: "pending" }
+GET /api/admin/jobs/{id}   (poll every 3s until status == "completed" or "failed")
+```

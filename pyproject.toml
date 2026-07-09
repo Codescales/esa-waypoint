@@ -1,0 +1,31 @@
+[project]
+name = "esa-incentive-pipeline"
+version = "0.2.0"
+description = "ESA incentive planning: Horaro schedule + Oengus submissions -> spreadsheet -> SQLite DB + web viewer"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "openpyxl>=3.1",
+    "itsdangerous>=2.2",
+    "markdown>=3.7",
+]
+
+[project.scripts]
+esa-pipeline = "src.pipeline:main"
+
+[project.optional-dependencies]
+tiltify = [
+    "playwright>=1.40",
+]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=7",
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "sqlmodel>=0.0.16",
+    "pre-commit>=4",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
