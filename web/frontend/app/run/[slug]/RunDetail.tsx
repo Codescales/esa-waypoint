@@ -9,7 +9,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import IncentiveEditor from "@/components/IncentiveEditor";
 import NotesPanel from "@/components/NotesPanel";
-import Chevron from "@/components/Chevron";
+
 
 function timeStr(iso: string) {
   return new Date(iso).toLocaleString("en-GB", {
@@ -240,24 +240,6 @@ export default function RunDetail({ run, brief }: Props) {
       {/* ── Sidecar structured data ── */}
       {sidecar && (
         <>
-          {/* Interview material */}
-          {sidecar.interview_material.length > 0 && (
-            <>
-              <SectionDivider />
-              <section>
-                <SectionHeading>Interview Material</SectionHeading>
-                <ul className="space-y-2">
-                  {sidecar.interview_material.map((m, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-foreground/80 leading-relaxed">
-                      <Chevron size={10} fill="#734e9e" stroke="#734e9e" className="mt-1 shrink-0" />
-                      <span>{m}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </>
-          )}
-
           {/* Sibling runs */}
           {sidecar.siblings.length > 0 && (
             <>

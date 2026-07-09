@@ -70,7 +70,6 @@ def build_brief(
     _add_siblings_to_sidecar(run_row, spreadsheet_path, json_data)
 
     md_parts.insert(0, f"# {run_row.game} — {run_row.category}\n\n")
-    md_parts.append(_build_incentives_md(json_data["incentives"]))
     md_parts.append(_build_sources_section(json_data["sources"], json_data.get("confidence_flags", [])))
 
     md_content = "\n".join(md_parts)
@@ -139,19 +138,6 @@ def _build_incentives(run_row: xr.RunRow, spreadsheet_path: str) -> list[dict]:
         })
 
     return result
-
-
-def _build_incentives_md(incentives: list[dict]) -> str:
-    if not incentives:
-        return ""
-    parts = ["\n## Incentives\n"]
-    for inv in incentives:
-        cat = inv.get("category", "") or "Incentive"
-        desc = inv.get("description", "") or "(no description)"
-        est = inv.get("estimate", "")
-        est_str = f" — {est}" if est else ""
-        parts.append(f"- **{cat}:** {desc}{est_str}")
-    return "\n".join(parts)
 
 
 def _add_game_and_category_info(
@@ -301,10 +287,6 @@ def _add_siblings_to_sidecar(
     )
     if siblings:
         json_data["siblings"] = siblings
-        if len(siblings) > 1:
-            json_data["interview_material"].append(
-                f"Runner also appears in {len(siblings)} other runs this marathon"
-            )
 
 
 def _build_sources_section(
