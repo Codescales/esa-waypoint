@@ -8,6 +8,13 @@ repos:
         pass_filenames: false
         always_run: true
 
+      - id: check-prod-imports
+        name: check prod imports (no dev deps)
+        entry: scripts/check-prod-imports.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+
       - id: bandit
         name: bandit (Python SAST)
         entry: python3 -m bandit -r src/ -ll -q
