@@ -11,20 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - run: pip install bandit
+      - run: uv tool install bandit
       - run: bandit -r src/ -ll -q
 
   python-deps:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - run: pip install pip-audit
+      - run: uv tool install pip-audit
       - run: pip-audit --desc on
 
   js-deps:

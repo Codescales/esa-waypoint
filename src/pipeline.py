@@ -403,7 +403,7 @@ def _tiltify_login_main(args) -> int:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as e:
-        print(f"ERROR: Playwright not installed. Install with: pip install playwright && playwright install chromium ({e})")
+        print(f"ERROR: Playwright not installed. Install with: uv tool install playwright && uv run python -m playwright install chromium ({e})")
         return 1
 
     session_path = args.tiltify_session

@@ -5,15 +5,19 @@ Pulls ESA schedule data from Horaro.net and accepted run submissions from Oengus
 ## Quick Start
 
 ```bash
-# Install dependencies
-python3 -m pip install requests openpyxl
+# Install uv (package manager)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies and activate venv
+uv sync
+source .venv/bin/activate
 
 # Copy and configure environment
 cp .env.example .env
 # Edit .env with your Oengus token (from browser DevTools > Network > Authorization header)
 
 # Run
-python3 -m src.pipeline --oengus-refresh
+uv run python -m src.pipeline --oengus-refresh
 ```
 
 Output: `output/incentive_plan.xlsx`
@@ -127,8 +131,7 @@ Tiltify reward with the same `(name, amount)` (within 100 cents) is skipped.
 ### One-time set-up
 
 ```bash
-python3 -m pip install playwright
-python3 -m playwright install chromium
+uv run python -m playwright install chromium
 ```
 
 ### Login once to capture a session
@@ -446,10 +449,10 @@ admin/notes API endpoints:
 
 ```bash
 # Install dev extras (first time)
-python3 -m pip install -e ".[dev]"
+uv sync --extra dev
 
 # Run all tests
-python3 -m pytest tests/ -v
+uv run python -m pytest tests/ -v
 ```
 
 Current coverage (118 tests):

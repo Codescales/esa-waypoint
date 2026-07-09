@@ -3,38 +3,31 @@ repos:
     hooks:
       - id: pytest-coverage
         name: pytest coverage (80% min)
-        entry: python3 -m pytest tests/ --cov=src --cov-config=.coveragerc --cov-fail-under=80
+        entry: uv run python -m pytest tests/ --cov=src --cov-config=.coveragerc --cov-fail-under=80
         language: system
         pass_filenames: false
         always_run: true
 
       - id: check-prod-imports
         name: check prod imports (no dev deps)
-        entry: scripts/check-prod-imports.sh
+        entry: uv run --no-dev python -c "import src.pipeline; import src.brief; import src.tiltify; import src.tiltify_push; import src.xlsx_reader; import src.import_to_sqlite; import src.db; import src.snapshot; import src.audit; import src.incentives; import src.horaro; import src.oengus; import src.src_api; import src.slugs; import src.evaluate; import src.find_incentives; import src.check_horaro_parity; import src.spreadsheet; import src.brief_builder; print('All prod imports OK')"
         language: system
         pass_filenames: false
         always_run: true
 
       - id: bandit
         name: bandit (Python SAST)
-        entry: python3 -m bandit -r src/ -ll -q
+        entry: uv tool run bandit -r src/ -ll -q
         language: system
         pass_filenames: false
         always_run: true
 
       - id: pip-audit
         name: pip-audit (Python dependency CVEs)
-        entry: python3 -m pip_auth --desc on -r <(python3 -m pip freeze 2>/dev/null)
+        entry: uv tool run pip-audit --desc on
         language: system
         pass_filenames: false
         always_run: true
-        stages: [manual]
-
-  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-    rev: v1.3.3
-    hooks:
-      - id: python-safety-dependencies-check
-        args: [--disable-optional-cr]
         stages: [manual]
 
       - id: hadolint-backend
