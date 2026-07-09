@@ -38,7 +38,7 @@ def src_get(path: str, _retry: bool = True) -> dict | None:
     url = f"{SRC_API}{path}"
     try:
         req = urllib.request.Request(url, headers=SRC_HEADERS)
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             data: dict = json.loads(resp.read().decode("utf-8"))
             _cache[key] = data
             return data

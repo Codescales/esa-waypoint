@@ -72,7 +72,7 @@ def fetch_event_bids(event_slug: str) -> list[dict]:
         headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/115.0"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             html = resp.read().decode("utf-8")
     except Exception:
         return []

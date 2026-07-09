@@ -251,7 +251,7 @@ def _load_lineup_cache() -> dict:
             LINEUP_API_URL,
             headers={"User-Agent": "esa-brief-skill/0.1 (host briefing tool)"},
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             payload = json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         # Network down — try the stale cache as a last resort
