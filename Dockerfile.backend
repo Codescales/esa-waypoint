@@ -7,7 +7,15 @@ COPY src/ src/
 COPY web/backend/ web/backend/
 
 RUN pip install --no-cache-dir -e . && \
-    pip install --no-cache-dir -e web/backend
+    pip install --no-cache-dir \
+        "fastapi>=0.115" \
+        "uvicorn[standard]>=0.34" \
+        "itsdangerous>=2.2" \
+        "pydantic>=2.0" \
+        "pydantic-settings>=2" \
+        "markdown>=3.7" \
+        "sqlmodel>=0.0.16" \
+        "aiosqlite>=0.20"
 
 EXPOSE 8000
 
