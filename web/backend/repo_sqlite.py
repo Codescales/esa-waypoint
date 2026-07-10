@@ -388,6 +388,12 @@ class SqliteIncentiveRepo:
             s.refresh(runner)
             return self._runner_to_dto(runner, s)
 
+    def runners(self) -> list[RunnerDTO]:
+        """Return all runners ordered by display_name."""
+        with Session(self._engine()) as s:
+            all_runners = s.exec(select(Runner).order_by(Runner.display_name)).all()
+            return [self._runner_to_dto(r, s) for r in all_runners]
+
     def _runner_to_dto(self, runner: Runner, session) -> RunnerDTO:
         # Find all runs this runner participates in via RunParticipant
         rps = session.exec(

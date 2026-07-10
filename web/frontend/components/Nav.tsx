@@ -10,11 +10,10 @@ export default function Nav() {
   const { theme, toggle } = useTheme();
 
   const links = [
-    { href: "/", label: "Marathon" },
-    { href: "/schedule", label: "Schedule" },
-    { href: "/incentives", label: "Incentives" },
-    { href: "/admin/incentives", label: "Admin Incentives" },
-    { href: "/admin", label: "Admin" },
+    { href: "/", label: "Marathon", exact: true },
+    { href: "/schedule", label: "Schedule", exact: true },
+    { href: "/incentives", label: "Incentives", exact: true },
+    { href: "/admin", label: "Admin", exact: false },
   ];
 
   return (
@@ -33,7 +32,7 @@ export default function Nav() {
               key={l.href}
               href={l.href}
               className={`text-sm transition-colors ${
-                path === l.href
+                (l.exact ? path === l.href : path.startsWith(l.href))
                   ? "text-brand font-semibold"
                   : "text-muted hover:text-foreground"
               }`}

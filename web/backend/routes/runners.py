@@ -6,6 +6,14 @@ from ..repo import IncentiveRepo
 router = APIRouter(tags=["runners"])
 
 
+@router.get("/api/runners")
+async def list_runners(
+    repo: IncentiveRepo = Depends(get_repo),
+    _=auth_required,
+):
+    return repo.runners()
+
+
 @router.get("/api/runners/{slug}")
 async def get_runner(
     slug: str,

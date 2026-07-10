@@ -2,7 +2,7 @@
 
 from fastapi import Request, Depends
 
-from .auth import current_session
+from .auth import current_session, current_session_or_admin
 from .config import BRIEFS_DIR, DB_PATH, REPO_TYPE, SPREADSHEET_PATH
 from .repo import XlsxIncentiveRepo
 
@@ -20,7 +20,7 @@ def get_briefs_dir() -> str:
     return BRIEFS_DIR
 
 
-auth_required = Depends(current_session)
+auth_required = Depends(current_session_or_admin)
 
 
 __all__ = ["get_repo", "get_briefs_dir", "auth_required", "REPO_TYPE", "DB_PATH", "SPREADSHEET_PATH"]

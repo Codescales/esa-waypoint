@@ -234,7 +234,7 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (res.status === 401) {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin")) {
       window.location.href = "/login";
     }
     throw new Error("Unauthorized");
@@ -387,6 +387,10 @@ export function getRunnerPbs(slug: string): Promise<RunnerPBDTO> {
 
 export function getRunnerRuns(slug: string): Promise<Run[]> {
   return fetchApi(`/api/runners/${encodeURIComponent(slug)}/runs`);
+}
+
+export function getRunners(): Promise<RunnerDTO[]> {
+  return fetchApi("/api/runners");
 }
 
 export interface RunnerPatch {
