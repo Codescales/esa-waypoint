@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Cabin, Barlow_Condensed, Oswald } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
-import StaleBanner from "@/components/StaleBanner";
+
 import ThemeProvider from "@/components/ThemeProvider";
 
 const bebasNeue = Bebas_Neue({
@@ -48,7 +48,6 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <Nav />
-          <StaleBanner />
           <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
             {children}
           </main>

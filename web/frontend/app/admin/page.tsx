@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, FormEvent, useCallback, useRef } from "react";
+import StaleBanner from "@/components/StaleBanner";
 import {
   adminLogin,
   adminStatus,
@@ -245,6 +246,7 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <StaleBanner />
       <div>
         <h1 className="text-2xl font-bold">Admin</h1>
         <p className="text-sm text-muted">Operator controls. Session expires in 1 hour.</p>
