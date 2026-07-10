@@ -10,19 +10,25 @@ import {
   IncentiveCreateRequest,
 } from "@/lib/api";
 
-export function useIncentives(runSlug?: string) {
+export function useIncentives(opts?: string | { runSlug?: string; upcoming?: boolean }) {
   const [incentives, setIncentives] = useState<Incentive[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const runSlug = typeof opts === "string" ? opts : opts?.runSlug;
+  const upcoming = typeof opts === "object" ? opts?.upcoming : undefined;
+
   const fetch = useCallback(() => {
     setLoading(true);
     setError(null);
-    getIncentives(runSlug ? { run_slug: runSlug } : undefined)
+    const params: Record<string, string> = {};
+    if (runSlug) params.run_slug = runSlug;
+    if (upcoming) params.upcoming = "true";
+    getIncentives(Object.keys(params).length ? params : undefined)
       .then(setIncentives)
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [runSlug]);
+  }, [runSlug, upcoming]);
 
   useEffect(() => {
     fetch();

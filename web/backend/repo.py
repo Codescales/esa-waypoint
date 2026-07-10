@@ -83,6 +83,7 @@ class IncentiveRepo(Protocol):
         status: str = "",
         category: str = "",
         stream: str = "",
+        upcoming: bool = False,
     ) -> list[IncentiveDTO]: ...
 
     def incentive(self, uuid: str) -> Optional[IncentiveDTO]: ...
@@ -189,6 +190,7 @@ class XlsxIncentiveRepo:
         status: str = "",
         category: str = "",
         stream: str = "",
+        upcoming: bool = False,
     ) -> list[IncentiveDTO]:
         from src import xlsx_reader as xr
         from src.slugs import run_slug as make_slug
@@ -196,6 +198,7 @@ class XlsxIncentiveRepo:
         rows = xr.read_incentives(self._path)
         result: list[IncentiveDTO] = []
 
+        now = datetime.now(xr.TZ)
         for r in rows:
             slug = make_slug(r.game, r.category, r.scheduled, r.submission_id)
             if run_slug and slug != run_slug:
@@ -205,6 +208,8 @@ class XlsxIncentiveRepo:
             if category and r.incentive_category.lower() != category.lower():
                 continue
             if stream and xr.stream_token_to_short(r.stream).lower() != stream.lower() and r.stream.lower() != stream.lower():
+                continue
+            if upcoming and r.scheduled < now:
                 continue
             participants = [
                 ParticipantDTO(

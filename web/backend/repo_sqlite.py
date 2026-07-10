@@ -229,11 +229,13 @@ class SqliteIncentiveRepo:
         status: str = "",
         category: str = "",
         stream: str = "",
+        upcoming: bool = False,
     ) -> list[IncentiveDTO]:
         with Session(self._engine()) as s:
             stmt = select(Incentive, Run).join(Run, Run.id == Incentive.run_id)
             incs = s.exec(stmt).all()
 
+        now = datetime.now(TZ)
         result: list[IncentiveDTO] = []
         for inc, run in incs:
             if run_slug and run.slug != run_slug:
@@ -245,6 +247,12 @@ class SqliteIncentiveRepo:
             if stream:
                 stream_lower = stream.lower()
                 if (inc.stream or "").lower() != stream_lower and (run.stream_short or "").lower() != stream_lower:
+                    continue
+            if upcoming:
+                scheduled = inc.scheduled
+                if scheduled.tzinfo is None:
+                    scheduled = scheduled.replace(tzinfo=TZ)
+                if scheduled < now:
                     continue
             result.append(self._incentive_to_dto(inc, run))
 

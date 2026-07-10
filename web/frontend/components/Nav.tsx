@@ -13,6 +13,7 @@ export default function Nav() {
     { href: "/", label: "Marathon" },
     { href: "/schedule", label: "Schedule" },
     { href: "/incentives", label: "Incentives" },
+    { href: "/admin/incentives", label: "Admin Incentives" },
     { href: "/admin", label: "Admin" },
   ];
 

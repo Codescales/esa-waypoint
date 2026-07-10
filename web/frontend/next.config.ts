@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  allowedDevOrigins: ["172.20.1.27"],
+  allowedDevOrigins: ["172.20.1.27", "code.int.haguest.com"],
   async rewrites() {
     return [
       {

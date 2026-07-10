@@ -23,8 +23,8 @@ export default function Chevron({
     >
       <defs>
         <linearGradient id="btrlGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#734e9e" />
-          <stop offset="100%" stopColor="#d09846" />
+          <stop offset="0%" stopColor="#734e9e" suppressHydrationWarning />
+          <stop offset="100%" stopColor="#d09846" suppressHydrationWarning />
         </linearGradient>
       </defs>
       <path

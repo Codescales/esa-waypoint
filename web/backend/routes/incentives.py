@@ -18,10 +18,11 @@ async def list_incentives(
     status: str = Query(default=""),
     category: str = Query(default=""),
     stream: str = Query(default=""),
+    upcoming: bool = Query(default=False),
     repo: IncentiveRepo = Depends(get_repo),
     _=auth_required,
 ):
-    return repo.incentives(run_slug=run_slug, status=status, category=category, stream=stream)
+    return repo.incentives(run_slug=run_slug, status=status, category=category, stream=stream, upcoming=upcoming)
 
 
 @router.get("/api/incentives/{uuid}", response_model=IncentiveDTO)
