@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, FormEvent, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import StaleBanner from "@/components/StaleBanner";
 import {
-  adminLogin,
   adminStatus,
   adminRefresh,
   adminSnapshots,
@@ -25,37 +24,26 @@ import {
 type JobSummary = { step: string; detail: string };
 
 export default function AdminPage() {
-  const [password, setPassword] = useState("");
-  const [authed, setAuthed] = useState<boolean | null>(null); // null = checking
-  const [error, setError] = useState("");
   const [status, setStatus] = useState<AdminStatus | null>(null);
   const [snapshots, setSnapshots] = useState<AdminSnapshot[]>([]);
   const [audit, setAudit] = useState<AdminAuditEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
-  // Active jobs polling state
   const [jobs, setJobs] = useState<JobDTO[]>([]);
-  // Tracked sync jobs: id -> { status, summary }
   const [syncJobs, setSyncJobs] = useState<Record<string, JobDTO>>({});
   const jobsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const syncIntervalsRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
-  async function refreshStatus(): Promise<boolean> {
-    try {
-      const [s, sn, au] = await Promise.all([
-        adminStatus(),
-        adminSnapshots(),
-        adminAudit(20),
-      ]);
-      setStatus(s);
-      setSnapshots(sn);
-      setAudit(au);
-      return true;
-    } catch {
-      setAuthed(false);
-      return false;
-    }
+  async function refreshStatus() {
+    const [s, sn, au] = await Promise.all([
+      adminStatus(),
+      adminSnapshots(),
+      adminAudit(20),
+    ]);
+    setStatus(s);
+    setSnapshots(sn);
+    setAudit(au);
   }
 
   const loadJobs = useCallback(async () => {
@@ -68,20 +56,16 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    refreshStatus().then((ok) => {
-      if (ok) setAuthed(true);
-    });
+    refreshStatus();
   }, []);
 
   useEffect(() => {
-    if (authed) {
-      loadJobs();
-      jobsIntervalRef.current = setInterval(loadJobs, 3000);
-      return () => {
-        if (jobsIntervalRef.current) clearInterval(jobsIntervalRef.current);
-      };
-    }
-  }, [authed, loadJobs]);
+    loadJobs();
+    jobsIntervalRef.current = setInterval(loadJobs, 3000);
+    return () => {
+      if (jobsIntervalRef.current) clearInterval(jobsIntervalRef.current);
+    };
+  }, [loadJobs]);
 
   function startPollingJob(jobId: string) {
     if (syncIntervalsRef.current[jobId]) return;
@@ -99,19 +83,6 @@ export default function AdminPage() {
       }
     }, 1500);
     syncIntervalsRef.current[jobId] = iv;
-  }
-
-  async function handleLogin(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    try {
-      await adminLogin(password);
-      setPassword("");
-      setAuthed(true);
-      await refreshStatus();
-    } catch {
-      setError("Invalid admin password");
-    }
   }
 
   async function handleRefresh() {
@@ -152,10 +123,7 @@ export default function AdminPage() {
     }
   }
 
-  async function triggerSync(
-    fn: () => Promise<JobDTO>,
-    label: string
-  ) {
+  async function triggerSync(fn: () => Promise<JobDTO>, label: string) {
     setFlash(null);
     try {
       const job = await fn();
@@ -165,7 +133,6 @@ export default function AdminPage() {
     } catch (err: any) {
       const msg: string = err?.message || String(err);
       if (msg.includes("409")) {
-        // Extract existing job id from detail if possible
         const parts = msg.split(":");
         const detail = parts[parts.length - 1]?.trim();
         if (detail) {
@@ -204,51 +171,11 @@ export default function AdminPage() {
 
   const activeSyncs = Object.values(syncJobs);
 
-  if (authed === null) {
-    return <p className="text-muted text-sm mt-8">Loading...</p>;
-  }
-
-  if (!authed) {
-    return (
-      <div className="max-w-md mx-auto mt-12">
-        <form
-          onSubmit={handleLogin}
-          className="p-6 card space-y-4"
-        >
-          <h1 className="text-xl font-bold">Admin Login</h1>
-          <p className="text-sm text-muted">
-            Admin operations require a separate password. Hosts cannot see this page.
-          </p>
-          {error && (
-            <p className="text-sm text-remove bg-remove/10 px-3 py-2 rounded">{error}</p>
-          )}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Admin password"
-            className="input"
-            autoFocus
-          />
-          <button
-            type="submit"
-            className="btn w-full"
-          >
-            log in
-          </button>
-          <p className="text-xs text-muted">
-            <a href="/" className="hover:underline">← Back to marathon</a>
-          </p>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <StaleBanner />
       <div>
-        <h1 className="text-2xl font-bold">Admin</h1>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-muted">Operator controls. Session expires in 1 hour.</p>
       </div>
 

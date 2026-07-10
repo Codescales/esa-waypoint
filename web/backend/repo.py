@@ -94,6 +94,8 @@ class IncentiveRepo(Protocol):
 
     def delete_incentive(self, uuid: str) -> Optional[IncentiveDTO]: ...
 
+    def runners(self) -> list[RunnerDTO]: ...
+
     def runner(self, slug: str) -> Optional[RunnerDTO]: ...
 
     def runner_profile(self, slug: str) -> Optional[RunnerProfileDTO]: ...
@@ -282,6 +284,12 @@ class XlsxIncentiveRepo:
     def runner(self, slug: str) -> Optional[RunnerDTO]:
         raise NotImplementedError(
             "Runner lookup requires REPO_TYPE=sqlite. The xlsx is a "
+            "raw import source and does not support runner entities."
+        )
+
+    def runners(self) -> list[RunnerDTO]:
+        raise NotImplementedError(
+            "Runner listing requires REPO_TYPE=sqlite. The xlsx is a "
             "raw import source and does not support runner entities."
         )
 

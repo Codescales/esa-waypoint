@@ -8,118 +8,18 @@ import {
   patchIncentive,
   deleteIncentive,
   createIncentive,
-  adminLogin,
-  adminStatus,
   Incentive,
   IncentiveCreateRequest,
 } from "@/lib/api";
-
-const CATEGORY_OPTIONS = ["", "Reward", "Poll-Bid War", "Target"];
-const VALID_OPTIONS = ["", "Yes", "No", "Needs Review"];
-const STATUS_OPTIONS = [
-  "",
-  "To-Do",
-  "In Review",
-  "Needs Information",
-  "Approved",
-  "Removed",
-];
-
-const STATUS_PILL: Record<string, string> = {
-  Approved: "pill pill-approve",
-  "In Review": "pill pill-review",
-  "To-Do": "pill pill-todo",
-  Removed: "pill pill-remove",
-  "Needs Information": "pill pill-review",
-};
+import {
+  CATEGORY_OPTIONS,
+  VALID_OPTIONS,
+  STATUS_OPTIONS,
+  STATUS_PILL,
+} from "@/lib/incentiveConstants";
 
 export default function AdminIncentivesPage() {
-  const [authed, setAuthed] = useState<boolean | null>(null);
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    // Check if already authed by trying a fetch that requires admin
-    import("@/lib/api").then(({ adminStatus }) => {
-      adminStatus()
-        .then(() => setAuthed(true))
-        .catch(() => setAuthed(false));
-    });
-  }, []);
-
-  if (authed === null) {
-    return <p className="text-muted text-sm mt-8">Loading...</p>;
-  }
-
-  if (!authed) {
-    return (
-      <AdminLoginForm
-        onLogin={() => setAuthed(true)}
-        error={error}
-        setError={setError}
-        password={password}
-        setPassword={setPassword}
-      />
-    );
-  }
-
   return <AdminIncentivesTable />;
-}
-
-function AdminLoginForm({
-  onLogin,
-  error,
-  setError,
-  password,
-  setPassword,
-}: {
-  onLogin: () => void;
-  error: string;
-  setError: (e: string) => void;
-  password: string;
-  setPassword: (p: string) => void;
-}) {
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    try {
-      await adminLogin(password);
-      setPassword("");
-      onLogin();
-    } catch {
-      setError("Invalid admin password");
-    }
-  }
-
-  return (
-    <div className="max-w-md mx-auto mt-12">
-      <form onSubmit={handleLogin} className="p-6 card space-y-4">
-        <h1 className="text-xl font-bold">Admin Incentives</h1>
-        <p className="text-sm text-muted">
-          Full CRUD access to incentives requires admin authentication.
-        </p>
-        {error && (
-          <p className="text-sm text-remove bg-remove/10 px-3 py-2 rounded">{error}</p>
-        )}
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Admin password"
-          className="input"
-          autoFocus
-        />
-        <button type="submit" className="btn w-full">
-          log in
-        </button>
-        <p className="text-xs text-muted">
-          <Link href="/incentives" className="hover:underline">
-            ← Read-only view
-          </Link>
-        </p>
-      </form>
-    </div>
-  );
 }
 
 function AdminIncentivesTable() {

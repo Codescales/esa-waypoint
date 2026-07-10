@@ -389,6 +389,10 @@ export function getRunnerRuns(slug: string): Promise<Run[]> {
   return fetchApi(`/api/runners/${encodeURIComponent(slug)}/runs`);
 }
 
+export function getRunners(): Promise<RunnerDTO[]> {
+  return fetchApi("/api/runners");
+}
+
 export interface RunnerPatch {
   display_name?: string;
   twitch?: string;

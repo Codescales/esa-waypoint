@@ -16,7 +16,7 @@ export default function RunSearchCombobox({
   const [highlightIdx, setHighlightIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const blurTimer = useRef<ReturnType<typeof setTimeout>>();
+  const blurTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
