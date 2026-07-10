@@ -13,6 +13,8 @@ const ADMIN_TABS = [
   { href: "/admin/incentives", label: "Incentives", segment: "incentives" },
 ];
 
+const SESSION_KEY = "esa_admin_authed";
+
 function AdminSubNav() {
   const pathname = usePathname();
 
@@ -46,12 +48,23 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  // Seed from sessionStorage to avoid flash-to-login on navigation.
+  // null = still verifying, true/false = known state.
+  const [authed, setAuthed] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") return null;
+    return sessionStorage.getItem(SESSION_KEY) === "1" ? true : null;
+  });
 
   useEffect(() => {
     adminStatus()
-      .then(() => setAuthed(true))
-      .catch(() => setAuthed(false));
+      .then(() => {
+        sessionStorage.setItem(SESSION_KEY, "1");
+        setAuthed(true);
+      })
+      .catch(() => {
+        sessionStorage.removeItem(SESSION_KEY);
+        setAuthed(false);
+      });
   }, []);
 
   if (authed === null) {
@@ -59,7 +72,14 @@ export default function AdminLayout({
   }
 
   if (!authed) {
-    return <AdminLoginForm onLogin={() => setAuthed(true)} />;
+    return (
+      <AdminLoginForm
+        onLogin={() => {
+          sessionStorage.setItem(SESSION_KEY, "1");
+          setAuthed(true);
+        }}
+      />
+    );
   }
 
   return (

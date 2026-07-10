@@ -52,3 +52,16 @@ async def current_session(request: Request) -> None:
     session = request.cookies.get(_COOKIE_NAME)
     if not validate_session(session):
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+async def current_session_or_admin(request: Request) -> None:
+    """Accept either a valid host session or a valid admin session.
+
+    Admin users are implicitly authorised for all host-level reads.
+    """
+    from .auth_admin import validate_admin_session, admin_cookie_name
+    if validate_session(request.cookies.get(_COOKIE_NAME)):
+        return
+    if validate_admin_session(request.cookies.get(admin_cookie_name())):
+        return
+    raise HTTPException(status_code=401, detail="Unauthorized")
