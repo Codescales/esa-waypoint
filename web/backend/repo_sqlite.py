@@ -118,6 +118,7 @@ class SqliteIncentiveRepo:
         window: Optional[tuple[datetime, datetime]] = None,
         next_hours: float = 0,
         marathon: bool = False,
+        search: str = "",
     ) -> list[RunDTO]:
         from zoneinfo import ZoneInfo
         TZ = ZoneInfo("Europe/Stockholm")
@@ -129,6 +130,14 @@ class SqliteIncentiveRepo:
             def _aware(dt: datetime) -> datetime:
                 return dt if dt.tzinfo else dt.replace(tzinfo=TZ)
 
+            if search:
+                q = search.lower()
+                rows = [
+                    r for r in rows
+                    if q in r.game.lower()
+                    or q in r.category.lower()
+                    or q in (r.runner_display or "").lower()
+                ]
             if stream:
                 stream_lower = stream.lower()
                 rows = [r for r in rows if r.stream.lower() == stream_lower or r.stream_short.lower() == stream_lower]

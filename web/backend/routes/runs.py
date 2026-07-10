@@ -15,6 +15,7 @@ async def list_runs(
     window: str = Query(default=""),
     next_hours: float = Query(default=0),
     marathon: bool = Query(default=False),
+    search: str = Query(default=""),
     repo: XlsxIncentiveRepo = Depends(get_repo),
     _=auth_required,
 ):
@@ -26,7 +27,7 @@ async def list_runs(
                 parsed_window = (datetime.fromisoformat(parts[0]), datetime.fromisoformat(parts[1]))
             except ValueError:
                 pass
-    return repo.runs(stream=stream, window=parsed_window, next_hours=next_hours, marathon=marathon)
+    return repo.runs(stream=stream, window=parsed_window, next_hours=next_hours, marathon=marathon, search=search)
 
 
 @router.get("/api/runs/{slug}")

@@ -71,6 +71,7 @@ class IncentiveRepo(Protocol):
         window: Optional[tuple[datetime, datetime]] = None,
         next_hours: float = 0,
         marathon: bool = False,
+        search: str = "",
     ) -> list[RunDTO]: ...
 
     def run(self, slug: str) -> Optional[RunDTO]: ...
@@ -138,12 +139,21 @@ class XlsxIncentiveRepo:
         window: Optional[tuple[datetime, datetime]] = None,
         next_hours: float = 0,
         marathon: bool = False,
+        search: str = "",
     ) -> list[RunDTO]:
         from src import xlsx_reader as xr
         from src.slugs import run_slug
 
         rows = xr.read_cross_reference(self._path)
 
+        if search:
+            q = search.lower()
+            rows = [
+                r for r in rows
+                if q in r.game.lower()
+                or q in r.category.lower()
+                or q in (r.runner_display or "").lower()
+            ]
         if stream:
             rows = xr.filter_runs_by_stream(rows, stream)
         if window:

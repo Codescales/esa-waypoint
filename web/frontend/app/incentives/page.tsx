@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useIncentives } from "@/lib/hooks";
+import RunSearchCombobox from "@/components/RunSearchCombobox";
 import {
   patchIncentive,
   deleteIncentive,
@@ -428,15 +429,11 @@ function AddIncentiveForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div>
           <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
-            Run slug *
+            Run *
           </label>
-          <input
-            type="text"
+          <RunSearchCombobox
             value={runSlug}
-            onChange={(e) => setRunSlug(e.target.value)}
-            required
-            placeholder="super-mario-64"
-            className="input input-sm"
+            onChange={(slug) => setRunSlug(slug)}
           />
         </div>
         <div>

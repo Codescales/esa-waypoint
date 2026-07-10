@@ -286,12 +286,14 @@ export function getRuns(params?: {
   window?: string;
   next_hours?: number;
   marathon?: boolean;
+  search?: string;
 }): Promise<Run[]> {
   const q = new URLSearchParams();
   if (params?.stream) q.set("stream", params.stream);
   if (params?.window) q.set("window", params.window);
   if (params?.next_hours) q.set("next_hours", String(params.next_hours));
   if (params?.marathon) q.set("marathon", "true");
+  if (params?.search) q.set("search", params.search);
   return fetchApi(`/api/runs?${q.toString()}`);
 }
 
