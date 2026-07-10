@@ -3,11 +3,18 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+function hasSession(): boolean {
+  return (
+    sessionStorage.getItem("esa-auth") === "1" ||
+    sessionStorage.getItem("esa_admin_authed") === "1"
+  );
+}
+
 export function useAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    if (sessionStorage.getItem("esa-auth") !== "1") {
+    if (!hasSession()) {
       router.replace("/login");
     }
   }, [router]);
@@ -15,5 +22,5 @@ export function useAuth() {
 
 export function isAuthenticated(): boolean {
   if (typeof window === "undefined") return false;
-  return sessionStorage.getItem("esa-auth") === "1";
+  return hasSession();
 }
