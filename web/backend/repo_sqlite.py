@@ -136,7 +136,10 @@ class SqliteIncentiveRepo:
                     r for r in rows
                     if q in r.game.lower()
                     or q in r.category.lower()
-                    or q in (r.runner_display or "").lower()
+                    or any(
+                        q in (rp.display_name or "").lower()
+                        for rp in self._participants_for_run(r.id or 0, s)
+                    )
                 ]
             if stream:
                 stream_lower = stream.lower()
@@ -624,6 +627,33 @@ class SqliteIncentiveRepo:
             run = s.exec(select(Run).where(Run.slug == slug)).first()
             if run is None:
                 return None
+
+            runner_slugs = patch.pop("runner_slugs", None)
+            if runner_slugs is not None:
+                now = datetime.now(TZ).replace(tzinfo=None)
+                existing = s.exec(
+                    select(RunParticipant).where(RunParticipant.run_id == run.id)
+                ).all()
+                for rp in existing:
+                    s.delete(rp)
+                for i, r_slug in enumerate(runner_slugs):
+                    runner = s.exec(
+                        select(Runner).where(Runner.slug == r_slug)
+                    ).first()
+                    rp = RunParticipant(
+                        run_id=run.id,
+                        runner_slug=r_slug,
+                        display_name=runner.display_name if runner else r_slug,
+                        twitch=runner.twitch if runner else "",
+                        discord=runner.discord if runner else "",
+                        twitter=runner.twitter if runner else "",
+                        pronouns=runner.pronouns if runner else "",
+                        pronunciation=runner.pronunciation if runner else "",
+                        imported_at=now,
+                        updated_at=now,
+                    )
+                    s.add(rp)
+
             for field, value in patch.items():
                 if value is not None and hasattr(run, field):
                     setattr(run, field, value)

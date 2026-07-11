@@ -538,6 +538,7 @@ class RunPatchRequest(BaseModel):
     pronouns: Optional[str] = None
     show_cam: Optional[str] = None
     runner_comments: Optional[str] = None
+    runner_slugs: Optional[list[str]] = None
 
 
 @router.patch("/runners/{slug}", response_model=RunnerDTO)

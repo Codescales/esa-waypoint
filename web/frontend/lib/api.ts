@@ -415,6 +415,7 @@ export interface RunPatch {
   pronouns?: string;
   show_cam?: string;
   runner_comments?: string;
+  runner_slugs?: string[];
 }
 
 export function adminPatchRun(slug: string, patch: RunPatch): Promise<Run> {
