@@ -71,3 +71,23 @@ jobs:
           exit-code: 1
           severity: CRITICAL
           trivyignores: .trivyignore
+
+      - name: Build and push backup
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backup
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/backup:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy scan backup image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/backup:latest
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          trivyignores: .trivyignore
