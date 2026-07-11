@@ -27,9 +27,14 @@ def _validate_shift(shift: str) -> str:
 
 
 def _resolve_safe(briefs_dir: str, *parts: str) -> str:
-    """Resolve a path and verify it stays within briefs_dir."""
-    resolved = os.path.normpath(os.path.join(briefs_dir, *parts))
-    if not resolved.startswith(os.path.normpath(briefs_dir) + os.sep) and resolved != os.path.normpath(briefs_dir):
+    """Resolve a path and verify it stays within the canonical briefs_dir.
+
+    Uses os.path.realpath so that symlinks and ``..`` segments cannot be
+    used to escape the base directory. Raises HTTP 400 on any escape.
+    """
+    base = os.path.realpath(briefs_dir)
+    resolved = os.path.realpath(os.path.join(base, *parts))
+    if resolved != base and not resolved.startswith(base + os.sep):
         raise HTTPException(status_code=400, detail="Invalid path")
     return resolved
 

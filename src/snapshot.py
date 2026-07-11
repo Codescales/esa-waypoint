@@ -118,7 +118,12 @@ def restore_snapshot(db_path: str, snapshot_id: str) -> SnapshotInfo:
     for creating a pre-restore snapshot first if needed.
     """
     sdir = snapshots_dir(db_path)
-    snap_path = os.path.join(sdir, f"esa.db.{snapshot_id}")
+    base = os.path.realpath(sdir)
+    snap_path = os.path.realpath(os.path.join(base, f"esa.db.{snapshot_id}"))
+    # Defense in depth: reject any snapshot_id that escapes the snapshots dir
+    # (e.g. via ``..`` or an absolute path) before touching the filesystem.
+    if snap_path != base and not snap_path.startswith(base + os.sep):
+        raise FileNotFoundError(f"Snapshot not found: {snapshot_id}")
     if not os.path.isfile(snap_path):
         raise FileNotFoundError(f"Snapshot not found: {snapshot_id}")
 

@@ -5,14 +5,6 @@ import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useIncentives } from "@/lib/hooks";
 
-const STATUS_PILL: Record<string, string> = {
-  Approved: "pill pill-approve",
-  "In Review": "pill pill-review",
-  "To-Do": "pill pill-todo",
-  Removed: "pill pill-remove",
-  "Needs Information": "pill pill-review",
-};
-
 export default function IncentivesPage() {
   useAuth();
   const { incentives, loading } = useIncentives({ upcoming: true });
@@ -82,8 +74,6 @@ export default function IncentivesPage() {
                 <th className="pb-2 pr-3 font-medium">Game</th>
                 <th className="pb-2 pr-3 font-medium">Incentive</th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
-                <th className="pb-2 pr-3 font-medium">Valid</th>
-                <th className="pb-2 pr-3 font-medium">Status</th>
                 <th className="pb-2 font-medium">Est</th>
               </tr>
             </thead>
@@ -103,14 +93,6 @@ export default function IncentivesPage() {
                   </td>
                   <td className="py-2 pr-3">
                     <span className="pill pill-todo">{x.incentive_category || "—"}</span>
-                  </td>
-                  <td className="py-2 pr-3">
-                    <span className="text-xs">{x.valid_for_game || "—"}</span>
-                  </td>
-                  <td className="py-2 pr-3">
-                    <span className={STATUS_PILL[x.status] || "pill pill-todo"}>
-                      {x.status}
-                    </span>
                   </td>
                   <td className="py-2">
                     <span className="text-xs text-muted">{x.incentive_estimate || "—"}</span>

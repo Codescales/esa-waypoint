@@ -101,6 +101,33 @@ class TestRestoreSnapshot:
         with pytest.raises(FileNotFoundError):
             restore_snapshot("/tmp/esa.db", "nonexistent")
 
+    def test_rejects_traversal_snapshot_id(self):
+        """A snapshot_id that escapes the snapshots dir must not restore a
+        file outside it (VULN-004)."""
+        import pytest
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "esa.db")
+            _create_test_db(db_path)
+            # Plant a target file two levels up that traversal would reach.
+            secret = os.path.join(tmpdir, "secret.db")
+            shutil.copy2(db_path, secret)
+            for payload in (
+                "../secret.db",
+                "../../etc/passwd",
+                "/etc/passwd",
+                "..%2f..%2fetc%2fpasswd",
+            ):
+                with pytest.raises(FileNotFoundError):
+                    restore_snapshot(db_path, payload)
+
+    def test_restores_with_valid_id_still_works(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "esa.db")
+            _create_test_db(db_path)
+            info = create_snapshot(db_path, SCHEMA_VERSION, "backup")
+            restored = restore_snapshot(db_path, info.id)
+            assert restored.id == info.id
+
 
 class TestPruneSnapshots:
     def test_keeps_n_most_recent(self):
