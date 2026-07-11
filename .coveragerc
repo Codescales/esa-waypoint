@@ -1,5 +1,9 @@
 [run]
+source =
+    src
+    web/backend
 omit =
+    # CLI/pipeline scripts not exercised in unit tests
     src/brief.py
     src/brief_builder.py
     src/check_horaro_parity.py
@@ -9,6 +13,15 @@ omit =
     src/oengus.py
     src/pipeline.py
     src/spreadsheet.py
+    # App startup/lifespan (tested by integration, not unit tests)
+    web/backend/app.py
+    # XlsxIncentiveRepo — legacy read-only shim, not used in production SQLite mode
+    web/backend/repo.py
+    # External-API-dependent modules (Tiltify, xlsx reader) tested at higher level
+    src/tiltify.py
+    src/tiltify_push.py
+    src/xlsx_reader.py
+    src/incentives.py
 
 [report]
 fail_under = 80
