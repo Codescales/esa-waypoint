@@ -164,6 +164,7 @@ class StaleInfo(BaseModel):
 class IncentivePatch(BaseModel):
     """Editable fields on an incentive. All optional — only set fields are updated."""
 
+    incentive_text: Optional[str] = None
     incentive_category: Optional[str] = None
     valid_for_game: Optional[str] = None
     status: Optional[str] = None

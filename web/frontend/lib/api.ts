@@ -320,6 +320,7 @@ export function getIncentive(uuid: string): Promise<Incentive> {
 }
 
 export interface IncentivePatch {
+  incentive_text?: string;
   incentive_category?: string;
   valid_for_game?: string;
   status?: string;
