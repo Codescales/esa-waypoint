@@ -25,6 +25,9 @@ export default function IncentiveEditor({ incentive, onUpdate, readOnly }: Props
     return (
       <div className="card p-4 space-y-3">
         <p className="text-sm text-foreground/80 leading-relaxed">{incentive.incentive_text}</p>
+        {incentive.details && (
+          <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{incentive.details}</p>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Field label="Category">
             <span className="text-sm text-foreground/60">{incentive.incentive_category || "—"}</span>

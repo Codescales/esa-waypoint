@@ -173,8 +173,8 @@ def _participant_label(row: IncentiveRow) -> str:
 
 
 def build_reward_request(row: IncentiveRow, dollar_per_minute: float = DEFAULT_DOLLAR_PER_MINUTE) -> CreateRewardRequest:
-    name = _first_line(row.incentive_text) or row.incentive_text.strip()
-    body = _rest(row.incentive_text)
+    name = row.incentive_text.strip()
+    body = row.details or ""
     label = _participant_label(row)
     if body:
         description = f"[{label} · {row.game}] {body}"
@@ -189,8 +189,8 @@ def build_reward_request(row: IncentiveRow, dollar_per_minute: float = DEFAULT_D
 
 
 def build_poll_request(row: IncentiveRow) -> CreatePollRequest:
-    name = _first_line(row.incentive_text) or row.incentive_text.strip()
-    body = _rest(row.incentive_text)
+    name = row.incentive_text.strip()
+    body = row.details or ""
     options = [line.strip() for line in body.splitlines() if line.strip()]
     if not options:
         options = [name]
@@ -198,7 +198,7 @@ def build_poll_request(row: IncentiveRow) -> CreatePollRequest:
 
 
 def build_target_request(row: IncentiveRow, dollar_per_minute: float = DEFAULT_DOLLAR_PER_MINUTE) -> CreateTargetRequest:
-    name = _first_line(row.incentive_text) or row.incentive_text.strip()
+    name = row.incentive_text.strip()
     amount = compute_amount_cents(row, dollar_per_minute) or 0
     return CreateTargetRequest(name=name, amount_cents=amount)
 

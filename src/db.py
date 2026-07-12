@@ -15,7 +15,7 @@ from typing import Optional
 from sqlmodel import Field, SQLModel, create_engine, text
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 class Run(SQLModel, table=True):
@@ -77,6 +77,7 @@ class Incentive(SQLModel, table=True):
     stream: str
     participants_json: str = ""
     incentive_text: str
+    details: str = ""
     incentive_category: str = ""
     valid_for_game: str = ""
     incentive_estimate: str = ""
@@ -239,6 +240,7 @@ def init_db(db_path: str) -> None:
       table with UNIQUE(run_id, runner_slug). Destructive for run/incentive rows
       (re-import required). Existing snapshot covers backup.
     - v4→v5: adds pronunciation column to run_participant and runner
+    - v5→v6: adds details column to incentive
     Seeding only happens on a fresh DB (no hosts present).
     """
     engine = make_engine(db_path)
@@ -334,6 +336,16 @@ def init_db(db_path: str) -> None:
             if "pronunciation" not in col_names:
                 conn.execute(text(
                     "ALTER TABLE runner ADD COLUMN pronunciation TEXT NOT NULL DEFAULT ''"
+                ))
+            conn.execute(text(f"PRAGMA user_version = {SCHEMA_VERSION}"))
+            conn.commit()
+        elif existing == 5:
+            # v5 → v6: add details column to incentive
+            cols = conn.execute(text("PRAGMA table_info(incentive)")).fetchall()
+            col_names = {c[1] for c in cols}
+            if "details" not in col_names:
+                conn.execute(text(
+                    "ALTER TABLE incentive ADD COLUMN details TEXT NOT NULL DEFAULT ''"
                 ))
             conn.execute(text(f"PRAGMA user_version = {SCHEMA_VERSION}"))
             conn.commit()

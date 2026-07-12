@@ -22,6 +22,7 @@ class IncentiveRow:
     runner_twitch: str
     runner_discord: str
     incentive_text: str
+    details: str = ""
     incentive_category: str = ""
     valid_for_game: str = ""
     incentive_estimate: str = ""
@@ -255,6 +256,7 @@ def build_incentive_rows(
             category = ""
             valid = ""
             status = ""
+            details = ""
             flagged = False
 
             if row_uuid in existing_incentives:
@@ -263,6 +265,7 @@ def build_incentive_rows(
                 valid = prev.get("valid_for_game", "")
                 estimate_str = prev.get("estimate", estimate_str)
                 status = prev.get("status", "")
+                details = prev.get("details", "")
                 if prev.get("text"):
                     text = prev["text"]
             else:
@@ -290,6 +293,7 @@ def build_incentive_rows(
                 runner_twitch=xr.runner_twitch,
                 runner_discord=xr.runner_discord,
                 incentive_text=text,
+                details=details,
                 incentive_category=category,
                 valid_for_game=valid,
                 incentive_estimate=estimate_str,

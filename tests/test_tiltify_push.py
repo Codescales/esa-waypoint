@@ -106,14 +106,14 @@ class TestComputeAmountCents:
 
 class TestBuildRewardRequest:
     def test_basic(self):
-        row = _make_row(incentive_text="Race to the end\nExtra details")
+        row = _make_row(incentive_text="Race to the end", details="Extra details")
         req = build_reward_request(row)
         assert req.name == "Race to the end"
         assert "Extra details" in req.description
         assert req.amount_cents == 5000
 
     def test_no_body(self):
-        row = _make_row(incentive_text="Just a name")
+        row = _make_row(incentive_text="Just a name", details="")
         req = build_reward_request(row)
         assert req.name == "Just a name"
         assert "Suggested by" in req.description
@@ -121,14 +121,15 @@ class TestBuildRewardRequest:
 
 class TestBuildPollRequest:
     def test_with_options(self):
-        row = _make_row(incentive_text="Pick a character\nMario\nLuigi\nPeach")
+        row = _make_row(incentive_text="Pick a character", details="Mario\nLuigi\nPeach")
         req = build_poll_request(row)
         assert req.name == "Pick a character"
         assert req.options == ["Mario", "Luigi", "Peach"]
 
     def test_no_options_falls_back(self):
-        row = _make_row(incentive_text="Just a name")
+        row = _make_row(incentive_text="Just a name", details="")
         req = build_poll_request(row)
+        assert req.name == "Just a name"
         assert req.options == ["Just a name"]
 
 

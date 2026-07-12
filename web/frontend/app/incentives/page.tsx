@@ -73,6 +73,7 @@ export default function IncentivesPage() {
               <tr className="border-b border-border text-muted text-left">
                 <th className="pb-2 pr-3 font-medium">Game</th>
                 <th className="pb-2 pr-3 font-medium">Incentive</th>
+                <th className="pb-2 pr-3 font-medium">Details</th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
                 <th className="pb-2 font-medium">Est</th>
               </tr>
@@ -90,6 +91,9 @@ export default function IncentivesPage() {
                   </td>
                   <td className="py-2 pr-3 max-w-[300px] truncate text-muted" title={x.incentive_text}>
                     {x.incentive_text}
+                  </td>
+                  <td className="py-2 pr-3 max-w-[200px] truncate text-muted" title={x.details || ""}>
+                    {x.details || "—"}
                   </td>
                   <td className="py-2 pr-3">
                     <span className="pill pill-todo">{x.incentive_category || "—"}</span>

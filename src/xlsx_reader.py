@@ -67,6 +67,7 @@ class IncentiveRow:
     status: str
     submission_id: str
     uuid: str
+    details: str = ""
     participants: list = field(default_factory=list)
 
 
@@ -193,8 +194,9 @@ def read_incentives(path: str) -> list[IncentiveRow]:
         scheduled = _parse_iso_cell(cell_row[0])
         if scheduled is None:
             continue
-        # Column 16 (index 15) = UUID; column 17 (index 16) = Participants JSON
+        # Column 16 (index 15) = UUID; column 17 (index 16) = Participants JSON; column 18 (index 17) = Details
         participants = _parse_participants_json(cell_row[16] if len(cell_row) > 16 else None)
+        details = str(cell_row[17] or "") if len(cell_row) > 17 else ""
         if not participants:
             runner_display = str(cell_row[4] or "")
             runner_twitch = str(cell_row[5] or "")
@@ -217,6 +219,7 @@ def read_incentives(path: str) -> list[IncentiveRow]:
             runner_twitch=str(cell_row[5] or ""),
             runner_discord=str(cell_row[6] or ""),
             incentive_text=str(cell_row[7] or ""),
+            details=details,
             incentive_category=str(cell_row[8] or ""),
             valid_for_game=str(cell_row[9] or ""),
             incentive_estimate=str(cell_row[10] or ""),
@@ -354,6 +357,7 @@ def read_incentives_from_db(db_path: str) -> list[IncentiveRow]:
                 runner_twitch="",
                 runner_discord="",
                 incentive_text=inv.incentive_text,
+                details=inv.details,
                 incentive_category=inv.incentive_category,
                 valid_for_game=inv.valid_for_game,
                 incentive_estimate=inv.incentive_estimate,

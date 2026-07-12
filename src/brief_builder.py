@@ -131,6 +131,7 @@ def _build_incentives(run_row: xr.RunRow, spreadsheet_path: str) -> list[dict]:
             "uuid": inv.uuid or "",
             "category": inv.incentive_category or "",
             "description": inv.incentive_text or "",
+            "details": inv.details or "",
             "estimate": inv.incentive_estimate or "",
             "valid_for_game": inv.valid_for_game or "",
             "status": inv.status or "",

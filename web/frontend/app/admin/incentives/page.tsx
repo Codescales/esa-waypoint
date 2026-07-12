@@ -129,6 +129,7 @@ function AdminIncentivesTable() {
               <tr className="border-b border-border text-muted text-left">
                 <th className="pb-2 pr-3 font-medium">Game</th>
                 <th className="pb-2 pr-3 font-medium">Incentive</th>
+                <th className="pb-2 pr-3 font-medium">Details</th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
                 <th className="pb-2 pr-3 font-medium">Valid</th>
                 <th className="pb-2 pr-3 font-medium">Status</th>
@@ -154,6 +155,15 @@ function AdminIncentivesTable() {
                   >
                     <span className="max-w-[300px] truncate text-muted block" title={x.incentive_text}>
                       {x.incentive_text}
+                    </span>
+                  </EditableTextCell>
+                  <EditableTextCell
+                    value={x.details || ""}
+                    onSave={(val) => patchIncentive(x.uuid, { details: val })}
+                    onUpdated={updateIncentive}
+                  >
+                    <span className="max-w-[200px] truncate text-muted block" title={x.details || ""}>
+                      {x.details || "—"}
                     </span>
                   </EditableTextCell>
                   <EditableSelectCell
@@ -395,6 +405,7 @@ function AddIncentiveForm({
 }) {
   const [runSlug, setRunSlug] = useState("");
   const [text, setText] = useState("");
+  const [details, setDetails] = useState("");
   const [category, setCategory] = useState("");
   const [valid, setValid] = useState("");
   const [estimate, setEstimate] = useState("");
@@ -411,6 +422,7 @@ function AddIncentiveForm({
       await onSubmit({
         run_slug: runSlug.trim(),
         incentive_text: text.trim(),
+        details: details || undefined,
         incentive_category: category || undefined,
         valid_for_game: valid || undefined,
         incentive_estimate: estimate || undefined,
@@ -449,6 +461,18 @@ function AddIncentiveForm({
             required
             placeholder="100% completion"
             className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Details
+          </label>
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder="Additional description..."
+            className="input input-sm"
+            rows={2}
           />
         </div>
         <div>

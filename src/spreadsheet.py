@@ -267,7 +267,7 @@ def _build_cross_reference(
 
 
 def _load_incentive_annotations(output_path: str) -> dict[str, dict]:
-    """Read existing Incentives Detail sheet, return {uuid: {text, category, valid_for_game, estimate, status}}."""
+    """Read existing Incentives Detail sheet, return {uuid: {text, category, valid_for_game, estimate, status, details}}."""
     if not os.path.exists(output_path):
         return {}
     try:
@@ -280,6 +280,9 @@ def _load_incentive_annotations(output_path: str) -> dict[str, dict]:
         return {}
 
     ws = wb["Incentives Detail"]
+    header = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+    has_details_col = bool(header and len(header) > 8 and header[8] == "Details")
+
     annotations = {}
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or len(row) < 15:
@@ -287,13 +290,24 @@ def _load_incentive_annotations(output_path: str) -> dict[str, dict]:
         uuid_val = str(row[14]) if row[14] else ""
         if not uuid_val:
             continue
-        annotations[uuid_val] = {
-            "text": str(row[7]) if len(row) > 7 and row[7] else "",
-            "category": str(row[8]) if len(row) > 8 and row[8] else "",
-            "valid_for_game": str(row[9]) if len(row) > 9 and row[9] else "",
-            "estimate": str(row[10]) if len(row) > 10 and row[10] else "",
-            "status": str(row[12]) if len(row) > 12 and row[12] else "",
-        }
+        if has_details_col:
+            annotations[uuid_val] = {
+                "text": str(row[7]) if len(row) > 7 and row[7] else "",
+                "details": str(row[8]) if len(row) > 8 and row[8] else "",
+                "category": str(row[9]) if len(row) > 9 and row[9] else "",
+                "valid_for_game": str(row[10]) if len(row) > 10 and row[10] else "",
+                "estimate": str(row[11]) if len(row) > 11 and row[11] else "",
+                "status": str(row[13]) if len(row) > 13 and row[13] else "",
+            }
+        else:
+            annotations[uuid_val] = {
+                "text": str(row[7]) if len(row) > 7 and row[7] else "",
+                "details": "",
+                "category": str(row[8]) if len(row) > 8 and row[8] else "",
+                "valid_for_game": str(row[9]) if len(row) > 9 and row[9] else "",
+                "estimate": str(row[10]) if len(row) > 10 and row[10] else "",
+                "status": str(row[12]) if len(row) > 12 and row[12] else "",
+            }
     wb.close()
     return annotations
 
@@ -481,7 +495,7 @@ def generate_spreadsheet(
     inc_headers = [
         "Scheduled (UTC)", "Game", "Category", "Stream",
         "Runner", "Twitch", "Discord",
-        "Incentive Text", "Incentive Category", "Valid for Game",
+        "Incentive Text", "Details", "Incentive Category", "Valid for Game",
         "Incentive Estimate", "Needs Approval", "Status",
         "Submission ID", "UUID", "Participants JSON",
     ]
@@ -505,23 +519,24 @@ def generate_spreadsheet(
         ws_inc.cell(row=row, column=6, value=ir.runner_twitch)
         ws_inc.cell(row=row, column=7, value=ir.runner_discord)
         ws_inc.cell(row=row, column=8, value=ir.incentive_text)
-        ws_inc.cell(row=row, column=9, value=ir.incentive_category)
-        ws_inc.cell(row=row, column=10, value=ir.valid_for_game)
-        ws_inc.cell(row=row, column=11, value=ir.incentive_estimate)
-        ws_inc.cell(row=row, column=12, value=ir.needs_approval)
-        ws_inc.cell(row=row, column=13, value=ir.status)
-        ws_inc.cell(row=row, column=14, value=ir.submission_id)
-        ws_inc.cell(row=row, column=15, value=ir.row_uuid)
-        ws_inc.cell(row=row, column=16, value=json.dumps(ir.participants, ensure_ascii=False))
+        ws_inc.cell(row=row, column=9, value=ir.details)
+        ws_inc.cell(row=row, column=10, value=ir.incentive_category)
+        ws_inc.cell(row=row, column=11, value=ir.valid_for_game)
+        ws_inc.cell(row=row, column=12, value=ir.incentive_estimate)
+        ws_inc.cell(row=row, column=13, value=ir.needs_approval)
+        ws_inc.cell(row=row, column=14, value=ir.status)
+        ws_inc.cell(row=row, column=15, value=ir.submission_id)
+        ws_inc.cell(row=row, column=16, value=ir.row_uuid)
+        ws_inc.cell(row=row, column=17, value=json.dumps(ir.participants, ensure_ascii=False))
         _style_data_row(ws_inc, row, len(inc_headers), alt=(i % 2 == 1))
 
     if inc_rows:
-        _add_dropdown(ws_inc, "I", "Reward,Poll-Bid War,Target", len(inc_rows))
-        _add_dropdown(ws_inc, "J", "Yes,No,Needs Review", len(inc_rows))
-        _add_dropdown(ws_inc, "M", "To-Do,In Review,Needs Information,Approved,Removed", len(inc_rows))
+        _add_dropdown(ws_inc, "J", "Reward,Poll-Bid War,Target", len(inc_rows))
+        _add_dropdown(ws_inc, "K", "Yes,No,Needs Review", len(inc_rows))
+        _add_dropdown(ws_inc, "N", "To-Do,In Review,Needs Information,Approved,Removed", len(inc_rows))
 
-    ws_inc.column_dimensions["O"].hidden = True
     ws_inc.column_dimensions["P"].hidden = True
+    ws_inc.column_dimensions["Q"].hidden = True
     _auto_width(ws_inc)
 
     # --- Sheet 5: Fundraising View ---

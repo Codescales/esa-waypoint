@@ -127,6 +127,7 @@ def seeded_db(tmp_path_factory):
             uuid="inc-001", run_id=r1.id, scheduled=now,
             game="Super Mario 64", category="120 Star", stream="stream1",
             participants_json="[]", incentive_text="100 coins bonus",
+            details="Collect 100 coins in the first level",
             incentive_category="Reward", status="Active",
             submission_id="sub-1", imported_at=now, updated_at=now,
         ))
@@ -134,6 +135,7 @@ def seeded_db(tmp_path_factory):
             uuid="inc-002", run_id=r2.id, scheduled=now,
             game="Portal", category="Inbounds", stream="stream1",
             participants_json="[]", incentive_text="glitchless bonus",
+            details="",
             incentive_category="Target", status="Pending",
             submission_id="sub-2", imported_at=now, updated_at=now,
         ))

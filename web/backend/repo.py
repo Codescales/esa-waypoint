@@ -236,6 +236,7 @@ class XlsxIncentiveRepo:
                 runner_discord=p0.discord if p0 else r.runner_discord,
                 runner_slug=p0.slug if p0 else runner_slug(r.runner_twitch, r.runner_display, 0),
                 incentive_text=r.incentive_text,
+                details=r.details if hasattr(r, 'details') else "",
                 incentive_category=r.incentive_category,
                 valid_for_game=r.valid_for_game,
                 incentive_estimate=r.incentive_estimate,

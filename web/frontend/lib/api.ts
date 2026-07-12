@@ -50,6 +50,7 @@ export interface Incentive {
   runner_discord: string;
   runner_slug: string;
   incentive_text: string;
+  details: string;
   incentive_category: string;
   valid_for_game: string;
   incentive_estimate: string;
@@ -321,6 +322,7 @@ export function getIncentive(uuid: string): Promise<Incentive> {
 
 export interface IncentivePatch {
   incentive_text?: string;
+  details?: string;
   incentive_category?: string;
   valid_for_game?: string;
   status?: string;
@@ -337,6 +339,7 @@ export function patchIncentive(uuid: string, patch: IncentivePatch): Promise<Inc
 export interface IncentiveCreateRequest {
   run_slug: string;
   incentive_text: string;
+  details?: string;
   incentive_category?: string;
   valid_for_game?: string;
   incentive_estimate?: string;
