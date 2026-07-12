@@ -34,10 +34,7 @@ export function useIncentives(opts?: string | { runSlug?: string; upcoming?: boo
     fetch();
   }, [fetch]);
 
-  useEffect(() => {
-    window.addEventListener("focus", fetch);
-    return () => window.removeEventListener("focus", fetch);
-  }, [fetch]);
+
 
   function updateIncentive(updated: Incentive) {
     setIncentives((prev) =>
