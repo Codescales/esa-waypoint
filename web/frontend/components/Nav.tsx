@@ -1,9 +1,42 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Chevron from "./Chevron";
 import { useTheme } from "./ThemeProvider";
+
+const TZ = "Europe/Stockholm";
+
+function LiveClock() {
+  const [time, setTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    function tick() {
+      setTime(
+        new Date().toLocaleTimeString("en-GB", {
+          timeZone: TZ,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+      );
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (time === null) return null;
+
+  return (
+    <span className="font-data text-sm tabular-nums text-muted" title="Europe/Stockholm">
+      {time}
+      <span className="text-xs ml-1 opacity-50">CET</span>
+    </span>
+  );
+}
 
 export default function Nav() {
   const path = usePathname();
@@ -41,6 +74,7 @@ export default function Nav() {
             </Link>
           ))}
         </div>
+        <LiveClock />
         <button
           onClick={toggle}
           aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
