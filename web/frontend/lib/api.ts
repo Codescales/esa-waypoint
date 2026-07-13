@@ -13,6 +13,7 @@ export interface Participant {
 export interface Run {
   pick: number;
   scheduled: string;
+  scheduled_date: string;
   game: string;
   category: string;
   estimate: string;
@@ -42,6 +43,7 @@ export interface Run {
 
 export interface Incentive {
   scheduled: string;
+  scheduled_date: string;
   game: string;
   category: string;
   stream: string;

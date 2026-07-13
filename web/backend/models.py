@@ -35,6 +35,7 @@ class ParticipantDTO(BaseModel):
 class RunDTO(BaseModel):
     pick: int
     scheduled: datetime
+    scheduled_date: str = ""  # YYYY-MM-DD in Europe/Stockholm time zone
     game: str
     category: str
     estimate: str
@@ -66,6 +67,7 @@ class RunDTO(BaseModel):
 
 class IncentiveDTO(BaseModel):
     scheduled: datetime
+    scheduled_date: str = ""  # YYYY-MM-DD in Europe/Stockholm time zone
     game: str
     category: str
     stream: str

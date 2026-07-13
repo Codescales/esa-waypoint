@@ -84,6 +84,7 @@ class SqliteIncentiveRepo:
         return RunDTO(
             pick=r.pick,
             scheduled=scheduled,
+            scheduled_date=scheduled.strftime("%Y-%m-%d"),
             game=r.game,
             category=r.category,
             estimate=r.estimate,
@@ -206,6 +207,7 @@ class SqliteIncentiveRepo:
 
         return IncentiveDTO(
             scheduled=scheduled,
+            scheduled_date=scheduled.strftime("%Y-%m-%d"),
             game=inc.game,
             category=inc.category,
             stream=inc.stream,

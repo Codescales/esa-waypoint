@@ -33,6 +33,7 @@ def _run_row_to_dto(r, stream_short: str, slug: str) -> RunDTO:
     return RunDTO(
         pick=r.pick,
         scheduled=r.scheduled,
+        scheduled_date=r.scheduled.strftime("%Y-%m-%d"),
         game=r.game,
         category=r.category,
         estimate=r.estimate,
@@ -228,6 +229,7 @@ class XlsxIncentiveRepo:
             p0 = participants[0] if participants else None
             result.append(IncentiveDTO(
                 scheduled=r.scheduled,
+                scheduled_date=r.scheduled.strftime("%Y-%m-%d"),
                 game=r.game,
                 category=r.category,
                 stream=r.stream,
