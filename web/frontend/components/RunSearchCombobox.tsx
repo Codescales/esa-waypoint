@@ -40,6 +40,15 @@ export default function RunSearchCombobox({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      // Always prevent Enter from submitting a parent form while the combobox is active.
+      e.preventDefault();
+      if (open && highlightIdx >= 0) {
+        const r = results[highlightIdx];
+        select(r.slug, `${r.game} — ${r.runner_display}`);
+      }
+      return;
+    }
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -47,10 +56,6 @@ export default function RunSearchCombobox({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlightIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && highlightIdx >= 0) {
-      e.preventDefault();
-      const r = results[highlightIdx];
-      select(r.slug, `${r.game} — ${r.runner_display}`);
     } else if (e.key === "Escape") {
       setOpen(false);
     }

@@ -187,12 +187,12 @@ export default function RunDetail({ run, brief }: Props) {
     <div className="max-w-3xl mx-auto">
 
       {/* ── Back link ── */}
-      <a href="/schedule" className="inline-flex items-center text-sm text-muted hover:text-foreground mb-6 transition-colors">
+      <Link href="/schedule" className="inline-flex items-center text-sm text-muted hover:text-foreground mb-6 transition-colors">
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back to schedule
-      </a>
+      </Link>
 
       {/* ── Header ── */}
       <div className="mb-6">
@@ -348,9 +348,9 @@ export default function RunDetail({ run, brief }: Props) {
 
       {/* ── Page footer ── */}
       <div className="mt-10 pt-6 border-t border-border">
-        <a href="/schedule" className="text-sm text-muted hover:text-foreground transition-colors">
+        <Link href="/schedule" className="text-sm text-muted hover:text-foreground transition-colors">
           ← Back to schedule
-        </a>
+        </Link>
       </div>
 
     </div>
