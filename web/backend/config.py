@@ -25,6 +25,7 @@ LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
 LLM_MAX_CONCURRENCY = int(os.environ.get("LLM_MAX_CONCURRENCY", "4"))
 LLM_DISABLED = os.environ.get("LLM_DISABLED", "").lower() in ("1", "true", "yes")
+LLM_VERIFY_SSL = os.environ.get("LLM_VERIFY_SSL", "true").lower() in ("1", "true", "yes")
 
 
 def validate() -> None:

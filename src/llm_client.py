@@ -20,10 +20,13 @@ import os
 import time
 from typing import Optional
 
+import httpx
+
 _BASE_URL = os.environ.get("LLM_BASE_URL", "")
 _API_KEY = os.environ.get("LLM_API_KEY", "")
 _MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
 _DISABLED = os.environ.get("LLM_DISABLED", "").lower() in ("1", "true", "yes")
+_VERIFY_SSL = os.environ.get("LLM_VERIFY_SSL", "true").lower() in ("1", "true", "yes")
 
 _MAX_RETRIES = 3
 _RETRY_DELAYS = [2, 5, 10]  # seconds between attempts
@@ -77,7 +80,7 @@ def complete(
             "openai package is not installed. Run: pip install openai"
         ) from exc
 
-    client = OpenAI(base_url=base_url, api_key=api_key)
+    client = OpenAI(base_url=base_url, api_key=api_key, http_client=httpx.Client(verify=_VERIFY_SSL))
 
     last_exc: Optional[Exception] = None
     for attempt, delay in enumerate([0] + _RETRY_DELAYS, start=1):
