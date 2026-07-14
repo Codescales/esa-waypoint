@@ -213,11 +213,22 @@ def _add_game_and_category_info(
     try:
         records = fetch_game_records(game_id)
         if records:
+            # Normalize SRC record fields to match BriefSidecarCategoryRecord
+            normalized = []
+            for i, rec in enumerate(records):
+                wr_sec = rec.get("wr_seconds")
+                time_str = str(wr_sec) if wr_sec is not None else ""
+                normalized.append({
+                    "place": i + 1,
+                    "runner": rec.get("runner_name") or rec.get("runner_id") or "?",
+                    "time": time_str,
+                    "date": rec.get("date") or "",
+                })
             json_data["category_section"] = {
                 "name": category_name,
-                "records": records,
+                "records": normalized,
             }
-            wr = records[0] if records else None
+            wr = normalized[0] if normalized else None
             if wr:
                 md_parts.append(f"**WR:** {wr.get('runner', '?')} — {wr.get('time', '?')} ({wr.get('date', '?')})  \n")
     except SrcApiError:
@@ -314,6 +325,9 @@ def _add_siblings_to_sidecar(
         display_name=run_row.runner_display,
         exclude_submission_id=run_row.submission_id or "",
     )
+    # Normalize: find_runner_sibling_runs returns {total, runs} dict; flatten to list
+    if isinstance(siblings, dict):
+        siblings = siblings.get("runs") or []
     if siblings:
         json_data["siblings"] = siblings
 

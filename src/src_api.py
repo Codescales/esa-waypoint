@@ -166,6 +166,22 @@ def fetch_game_records(game_id: str) -> list[dict]:
     if not resp or not resp.get("data"):
         return records
 
+    user_cache: dict[str, str] = {}
+
+    def _resolve_runner_name(uid: str) -> str:
+        if uid in user_cache:
+            return user_cache[uid]
+        try:
+            user = src_get(f"/users/{uid}")
+            if user and user.get("data"):
+                name = (user.get("data", {}).get("names", {}) or {}).get("international", "")
+                user_cache[uid] = name
+                return name
+        except Exception:
+            pass
+        user_cache[uid] = ""
+        return ""
+
     for entry in resp["data"]:
         cat_id = entry.get("category")
         cat_name = cat_map.get(cat_id, "unknown")
@@ -176,11 +192,14 @@ def fetch_game_records(game_id: str) -> list[dict]:
         wr_sec = run.get("times", {}).get("primary_t")
         players = run.get("players", [])
         runner = players[0].get("id", "") if players else ""
+        runner_name = _resolve_runner_name(runner) if runner else ""
         records.append({
             "category_id": cat_id,
             "category_name": cat_name,
             "wr_seconds": wr_sec,
             "runner_id": runner,
+            "runner_name": runner_name,
+            "date": run.get("date", ""),
         })
 
     _cache[key] = records
