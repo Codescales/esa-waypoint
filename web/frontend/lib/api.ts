@@ -539,8 +539,21 @@ export function syncSchedule(): Promise<JobDTO> {
   return fetchAdmin("/api/admin/sync/schedule", { method: "POST" });
 }
 
-export function syncBriefs(): Promise<JobDTO> {
-  return fetchAdmin("/api/admin/sync/briefs", { method: "POST" });
+export function syncBriefs(params?: {
+  engine?: "deterministic" | "llm";
+  mode?: "scan" | "interview" | "full";
+  runners?: boolean;
+  slugs?: string[];
+  runner?: string[];
+}): Promise<JobDTO> {
+  const q = new URLSearchParams();
+  if (params?.engine) q.set("engine", params.engine);
+  if (params?.mode) q.set("mode", params.mode);
+  if (params?.runners) q.set("runners", "true");
+  if (params?.slugs?.length) q.set("slugs", params.slugs.join(","));
+  if (params?.runner?.length) q.set("runner", params.runner.join(","));
+  const qs = q.toString() ? `?${q.toString()}` : "";
+  return fetchAdmin(`/api/admin/sync/briefs${qs}`, { method: "POST" });
 }
 
 export function syncRunners(slug?: string): Promise<JobDTO> {

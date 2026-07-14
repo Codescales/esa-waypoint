@@ -2,15 +2,23 @@
 
 Used by src/brief.py's generate_briefs() (admin sync endpoint) and
 by the CLI cmd_write subcommand.  build_brief() is the single entry
-point: given a RunRow and a spreadsheet path, it returns
+point: given a RunRow and pre-loaded context data, it returns
 (md_content, json_data).
+
+DB-primary:  Pass ``incentives`` and ``all_runs`` loaded from the DB
+(via xlsx_reader.read_incentives_from_db / read_cross_reference_from_db).
+
+xlsx shim:   If ``incentives`` / ``all_runs`` are omitted the function
+falls back to reading them from ``spreadsheet_path`` so existing callers
+continue to work.  This shim will be removed when xlsx is retired.
+See: https://github.com/anomalyco/esa-waypoint/issues (xlsx→CSV migration)
 """
 
 import json
 import os
 import re
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from . import xlsx_reader as xr
@@ -22,8 +30,6 @@ from .src_api import (
     fetch_src_categories,
     search_src_game,
     search_user_by_lookup,
-    fetch_user_profile,
-    fetch_user_personal_bests,
 )
 
 TZ = ZoneInfo("Europe/Stockholm")
@@ -31,11 +37,22 @@ TZ = ZoneInfo("Europe/Stockholm")
 
 def build_brief(
     run_row: xr.RunRow,
-    spreadsheet_path: str,
+    spreadsheet_path: str = "",
+    *,
+    incentives: Optional[list[xr.IncentiveRow]] = None,
+    all_runs: Optional[list[xr.RunRow]] = None,
 ) -> tuple[str, dict]:
     """Build a markdown brief + JSON sidecar for a single run.
 
-    Returns (md_content, json_data).
+    Args:
+        run_row: The run to brief.
+        spreadsheet_path: Path to xlsx (used only when ``incentives`` /
+            ``all_runs`` are not supplied — xlsx shim, deprecated).
+        incentives: Pre-loaded incentive rows (DB-primary path).
+        all_runs: Pre-loaded schedule rows for sibling lookup (DB-primary path).
+
+    Returns:
+        (md_content, json_data)
 
     Errors from SRC lookups are captured in the sidecar under
     ``errors`` — they never propagate.
@@ -46,7 +63,7 @@ def build_brief(
         "scheduled": run_row.scheduled.isoformat() if run_row.scheduled else "",
         "mode": "scan",
         "run_meta": _build_run_meta(run_row),
-        "incentives": _build_incentives(run_row, spreadsheet_path),
+        "incentives": _build_incentives(run_row, spreadsheet_path, incentives=incentives),
         "runner_section": None,
         "category_section": None,
         "game_section": None,
@@ -67,7 +84,7 @@ def build_brief(
 
     _add_game_and_category_info(run_row, json_data, md_parts)
     _add_runner_info(run_row, json_data, md_parts)
-    _add_siblings_to_sidecar(run_row, spreadsheet_path, json_data)
+    _add_siblings_to_sidecar(run_row, spreadsheet_path, json_data, all_runs=all_runs)
 
     md_parts.insert(0, f"# {run_row.game} — {run_row.category}\n\n")
     md_parts.append(_build_sources_section(json_data["sources"], json_data.get("confidence_flags", [])))
@@ -107,20 +124,35 @@ def _build_run_meta(run_row: xr.RunRow) -> dict:
     }
 
 
-def _build_incentives(run_row: xr.RunRow, spreadsheet_path: str) -> list[dict]:
-    """Build a list of incentive dicts for the sidecar."""
-    result: list[dict] = []
-    try:
-        incentives = xr.read_incentives(spreadsheet_path)
-    except Exception:
-        return result
+def _build_incentives(
+    run_row: xr.RunRow,
+    spreadsheet_path: str = "",
+    *,
+    incentives: Optional[list[xr.IncentiveRow]] = None,
+) -> list[dict]:
+    """Build a list of incentive dicts for the sidecar.
 
-    now = datetime.now(TZ)
+    Uses ``incentives`` if provided (DB-primary), otherwise falls back to
+    reading from ``spreadsheet_path`` (xlsx shim).
+    """
+    result: list[dict] = []
+
+    if incentives is None:
+        # xlsx shim — deprecated path
+        try:
+            incentives = xr.read_incentives(spreadsheet_path)
+        except Exception:
+            return result
+
+    run_scheduled = run_row.scheduled
+    if isinstance(run_scheduled, datetime) and not run_scheduled.tzinfo:
+        run_scheduled = run_scheduled.replace(tzinfo=TZ)
+
     for inv in incentives:
         inv_scheduled = inv.scheduled
         if isinstance(inv_scheduled, datetime) and not inv_scheduled.tzinfo:
             inv_scheduled = inv_scheduled.replace(tzinfo=TZ)
-        if inv_scheduled != run_row.scheduled:
+        if inv_scheduled != run_scheduled:
             continue
         if inv.game != run_row.game:
             continue
@@ -197,6 +229,12 @@ def _add_runner_info(
     json_data: dict,
     md_parts: list[str],
 ) -> None:
+    """Add runner identity to the run brief.
+
+    Only records identity (name, twitch, SRC url, verified flag) — no PBs,
+    no ESA history, no communities, no country.  Runner history lives on the
+    runner profile page and must not be duplicated in the run brief.
+    """
     names_to_try: list[tuple[str, str]] = []
     if run_row.participants:
         for p in run_row.participants:
@@ -223,48 +261,26 @@ def _add_runner_info(
         pass
 
     if user:
-        user_id = user.get("id", "")
         user_name = (user.get("names", {}) or {}).get("international", "")
-        user_twitch_uri = (user.get("twitch", {}) or {}).get("uri", "") if user.get("twitch") else ""
         src_url = f"https://www.speedrun.com/users/{user_name}" if user_name else None
 
         if src_url:
             json_data["sources"].append({"name": "speedrun.com", "url": src_url})
 
-        try:
-            profile = fetch_user_profile(user_id)
-        except SrcApiError:
-            profile = None
-
-        try:
-            pbs = fetch_user_personal_bests(user_id)
-            pb_count = len(pbs)
-            pb_games = list(dict.fromkeys(p["game_name"] for p in pbs))[:5]
-        except (SrcApiError, Exception):
-            pb_count = 0
-            pb_games = []
-
-        runner_info = {
+        # Identity only — PBs / history belong on the runner page, not here.
+        json_data["runner_section"] = {
             "name": user_name or display_name,
             "twitch": first_twitch,
             "src_url": src_url,
             "verified": True,
-            "pb_count": pb_count,
-            "top_games": pb_games,
         }
-        json_data["runner_section"] = runner_info
         md_parts.append(f"**Runner:** [{user_name or display_name}]({src_url})  \n")
-        if pb_count:
-            games_str = ", ".join(pb_games)
-            md_parts.append(f"**PBs:** {pb_count} across {games_str}  \n")
     else:
         json_data["runner_section"] = {
             "name": display_name,
             "twitch": first_twitch,
             "src_url": None,
             "verified": False,
-            "pb_count": 0,
-            "top_games": [],
         }
         md_parts.append(f"**Runner:** {display_name}  \n")
         json_data["confidence_flags"].append(f"Runner '{display_name}' not verified on SRC")
@@ -272,13 +288,25 @@ def _add_runner_info(
 
 def _add_siblings_to_sidecar(
     run_row: xr.RunRow,
-    spreadsheet_path: str,
-    json_data: dict,
+    spreadsheet_path: str = "",
+    json_data: dict = None,
+    *,
+    all_runs: Optional[list[xr.RunRow]] = None,
 ) -> None:
-    try:
-        all_runs = xr.read_cross_reference(spreadsheet_path)
-    except Exception:
-        return
+    """Add sibling runs to the sidecar.
+
+    Uses ``all_runs`` if provided (DB-primary), otherwise falls back to
+    reading from ``spreadsheet_path`` (xlsx shim).
+    """
+    if json_data is None:
+        json_data = {}
+
+    if all_runs is None:
+        # xlsx shim — deprecated path
+        try:
+            all_runs = xr.read_cross_reference(spreadsheet_path)
+        except Exception:
+            return
 
     siblings = xr.find_runner_sibling_runs(
         runs=all_runs,

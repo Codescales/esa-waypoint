@@ -457,6 +457,79 @@ def import_xlsx_to_sqlite(
     }
 
 
+def sync_runner_profiles_to_db(
+    db_path: str = "output/esa.db",
+    profiles_cache_path: str = "",
+) -> dict:
+    """Push the on-disk runner-profile cache into the DB without a full xlsx import.
+
+    Reads ``output/briefs/.cache/runner_profiles.json`` (or the path supplied),
+    then for each Runner row in the DB whose cache key matches an entry, updates
+    ``runner.stats_json``.  Only existing Runner rows are touched; no new rows
+    are created.
+
+    This is the standalone counterpart to the profile-cache ingestion that was
+    previously embedded in ``import_xlsx_to_sqlite``.
+
+    Returns:
+        {"updated": N, "skipped": N, "errors": [...]}
+    """
+    if not profiles_cache_path:
+        profiles_cache_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "output", "briefs", ".cache", "runner_profiles.json",
+        )
+
+    cached_profiles: dict = {}
+    if os.path.exists(profiles_cache_path):
+        try:
+            with open(profiles_cache_path) as f:
+                cached_profiles = json.load(f)
+        except (json.JSONDecodeError, OSError) as exc:
+            return {"updated": 0, "skipped": 0, "errors": [str(exc)]}
+
+    if not cached_profiles:
+        return {"updated": 0, "skipped": 0, "errors": []}
+
+    from src.db import make_engine
+
+    engine = make_engine(db_path)
+    updated = 0
+    skipped = 0
+    errors: list[str] = []
+    now = datetime.now(ZoneInfo("Europe/Stockholm")).replace(tzinfo=None)
+
+    try:
+        with Session(engine) as session:
+            runners = session.exec(select(Runner)).all()
+            for runner in runners:
+                twitch = (runner.twitch or "").strip().lower()
+                display = (runner.display_name or "").strip().lower()
+                cache_key = f"{twitch}|{display}"
+                cached = cached_profiles.get(cache_key)
+                if not cached or not isinstance(cached, dict):
+                    skipped += 1
+                    continue
+                try:
+                    runner.stats_json = json.dumps({
+                        "summary": cached.get("summary"),
+                        "stats": cached.get("stats"),
+                        "sources": cached.get("sources"),
+                        "errors": cached.get("errors"),
+                    })
+                    runner.updated_at = now
+                    session.add(runner)
+                    updated += 1
+                except Exception as exc:
+                    errors.append(f"{runner.slug}: {exc}")
+                    skipped += 1
+            session.commit()
+    finally:
+        engine.dispose()
+
+    return {"updated": updated, "skipped": skipped, "errors": errors}
+
+
 def main():
     p = argparse.ArgumentParser(description="Import xlsx → SQLite")
     p.add_argument("--xlsx", default="output/incentive_plan.xlsx", help="Path to xlsx")

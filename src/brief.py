@@ -1049,8 +1049,8 @@ def _compose_stats(
 ) -> dict:
     """Build the {summary, stats, sources, errors} object for a runner.
 
-    Pure: takes already-fetched data. Used by both `cmd_runner_profile`
-    and the brief `write --with-profile` flow. `errors` is a
+    Pure: takes already-fetched data. Used by `cmd_runner_profile`
+    and `sync_runner_profiles_to_db`. `errors` is a
     list[str] for any field that was unavailable; `summary` always
     carries every headline number (None when not available) so the
     web viewer can render placeholders.
@@ -1352,53 +1352,14 @@ def cmd_find_siblings(args) -> None:
 def cmd_write(args) -> None:
     """Write a brief markdown file + JSON sidecar.
 
-    Preserves HOST NOTES block from previous write.
+    Preserves HOST NOTES block from previous write unless --force is set.
     Pass markdown content via --md (string) and structured data via --data (JSON).
-    When --with-profile is set, the runner's composite profile (summary + stats
-    block) is fetched from the on-disk cache and merged into the sidecar under
-    the `runner_profile` key.
     """
     _ensure_dirs()
 
     slug = args.slug
     md_content = args.md or ""
     json_data = json.loads(args.data) if args.data else {}
-
-    # ── Runner profile injection ──
-    if getattr(args, "with_profile", False):
-        run_meta = json_data.get("run_meta", {}) or {}
-        # Multi-runner: look for participants list first; fall back to
-        # legacy single-runner fields for backwards compat.
-        participants = run_meta.get("participants") or []
-        if not participants:
-            runner_name = run_meta.get("runner", "")
-            runner_twitch = run_meta.get("runner_twitch", "")
-            if runner_name or runner_twitch:
-                participants = [{"name": runner_name, "twitch": runner_twitch}]
-
-        profiles = []
-        for p in participants:
-            name = p.get("name") or p.get("display") or ""
-            twitch = p.get("twitch") or ""
-            if not name and not twitch:
-                continue
-            try:
-                profile = _fetch_runner_profile(name, twitch, use_cache=True)
-                profiles.append({
-                    "slug": twitch or name,
-                    "summary": profile.get("summary"),
-                    "stats": profile.get("stats"),
-                    "sources": profile.get("sources"),
-                    "errors": profile.get("errors"),
-                })
-            except Exception as e:
-                profiles.append({"slug": twitch or name, "error": str(e)})
-
-        if profiles:
-            # Keep legacy single-profile key for backwards compat when single runner.
-            json_data["runner_profiles"] = profiles
-            if len(profiles) == 1:
-                json_data["runner_profile"] = profiles[0]
 
     md_path = os.path.join(BRIEFS_DIR, f"{slug}.md")
     json_path = os.path.join(BRIEFS_DIR, f"{slug}.json")
@@ -1497,12 +1458,13 @@ def cmd_stale(args) -> None:
 def generate_briefs(
     spreadsheet_path: str = "",
     briefs_dir: str = "",
-    with_profile: bool = False,
     source: str = "xlsx",
     db_path: str = "",
 ) -> dict:
     """Regenerate all brief markdown files from the spreadsheet (or DB).
 
+    Runner history is not embedded in run briefs; it lives on the runner
+    profile page (GET /api/runners/{slug}/profile).
     Returns a summary dict with brief count and any errors.
     Reads env vars as defaults for empty parameters.
     """
@@ -1531,20 +1493,6 @@ def generate_briefs(
 
         try:
             md_content, json_data = bb.build_brief(r, spreadsheet_path)
-            if with_profile:
-                runner_name = r.runner_display
-                runner_twitch = r.runner_twitch
-                if runner_name or runner_twitch:
-                    try:
-                        profile = _fetch_runner_profile(runner_name, runner_twitch, use_cache=True)
-                        json_data["runner_profile"] = {
-                            "summary": profile.get("summary"),
-                            "stats": profile.get("stats"),
-                            "sources": profile.get("sources"),
-                            "errors": profile.get("errors"),
-                        }
-                    except Exception as e:
-                        json_data["runner_profile"] = {"error": str(e)}
 
             md_path = os.path.join(briefs_dir, f"{slug}.md")
             json_path = os.path.join(briefs_dir, f"{slug}.json")
@@ -1571,6 +1519,218 @@ def research_runner(
     Returns the runner profile dict (same shape as cmd_runner_profile).
     """
     return _fetch_runner_profile(name, twitch, use_cache=use_cache)
+
+
+def generate_briefs_llm(
+    db_path: str = "",
+    briefs_dir: str = "",
+    mode: str = "scan",
+    max_concurrency: int = 0,
+    refresh_runners: bool = False,
+    slugs: list[str] | None = None,
+    runner_twitches: list[str] | None = None,
+) -> dict:
+    """Regenerate brief markdown + JSON files using an LLM for prose authoring.
+
+    DB is the authoritative source.  Deterministic sidecar (incentives,
+    siblings, SRC records, confidence flags) is assembled by build_brief();
+    the LLM only writes the prose.  Runner profiles are fetched from the
+    on-disk cache (refreshed first when refresh_runners=True).
+
+    Safety: a DB snapshot and a backup of the briefs dir are created before
+    any files are written.
+
+    Args:
+        db_path: Path to the SQLite DB (default: DB_PATH env or output/esa.db).
+        briefs_dir: Output directory for brief files (default: BRIEFS_DIR env or output/briefs).
+        mode: "scan" | "interview" | "full" (default: "scan").
+        max_concurrency: Max parallel LLM calls (default: LLM_MAX_CONCURRENCY env or 4).
+        refresh_runners: If True, refresh runner profiles from SRC before
+            generating briefs (scoped to matched runners when slugs/runner_twitches
+            are supplied, otherwise all runners — slow).
+        slugs: Optional list of run slugs to regenerate. When supplied only
+            those runs are processed; all others are skipped.
+        runner_twitches: Optional list of Twitch handles (lowercase). When
+            supplied only runs whose primary runner matches are processed.
+            Can be combined with ``slugs`` (union).
+
+    Returns:
+        {"count": N, "runner_profiles_updated": N, "errors": [...]}
+    """
+    import shutil
+    import concurrent.futures
+    from datetime import datetime as _dt
+
+    from . import brief_prompts as bp
+    from . import llm_client
+    from .import_to_sqlite import sync_runner_profiles_to_db
+
+    if not db_path:
+        db_path = os.environ.get("DB_PATH", "output/esa.db")
+    if not briefs_dir:
+        briefs_dir = os.environ.get("BRIEFS_DIR", BRIEFS_DIR)
+    if not max_concurrency:
+        max_concurrency = int(os.environ.get("LLM_MAX_CONCURRENCY", "4"))
+
+    _ensure_dirs()
+
+    # ── Safety: snapshot DB + backup briefs dir ──────────────────────────────
+    from . import snapshot as snap
+    from . import audit as audit_log
+    from .db import get_schema_version
+
+    output_dir = os.path.dirname(db_path)
+    if os.path.exists(db_path):
+        schema_v = get_schema_version(db_path)
+        snap.create_snapshot(db_path, schema_v, reason="pre-brief-llm")
+        audit_log.write_audit(output_dir, "generate_briefs_llm", "snapshot created pre-brief-llm")
+
+    if os.path.isdir(briefs_dir):
+        ts = _dt.now(TZ).strftime("%Y%m%dT%H%M%S")
+        backup_dir = briefs_dir.rstrip("/") + f".bak.{ts}"
+        shutil.copytree(briefs_dir, backup_dir)
+        audit_log.write_audit(output_dir, "generate_briefs_llm", f"briefs backed up to {backup_dir}")
+
+    # ── Optionally refresh runner profiles from SRC ──────────────────────────
+    if refresh_runners:
+        all_runs_for_refresh = xr.read_cross_reference_from_db(db_path)
+        seen: set[str] = set()
+        for r in all_runs_for_refresh:
+            twitch = (r.runner_twitch or "").strip().lower()
+            name = (r.runner_display or "").strip()
+            key = twitch or name
+            if not key or key in seen:
+                continue
+            # Scope refresh to matched runners when filters are supplied
+            if runner_twitches and twitch not in {t.strip().lower() for t in runner_twitches}:
+                continue
+            seen.add(key)
+            try:
+                _fetch_runner_profile(name, twitch, use_cache=False)
+            except Exception:
+                pass
+        audit_log.write_audit(output_dir, "generate_briefs_llm", f"refreshed profiles for {len(seen)} runners")
+
+    # Sync refreshed profiles into the DB
+    sync_result = sync_runner_profiles_to_db(db_path)
+    audit_log.write_audit(
+        output_dir, "generate_briefs_llm",
+        f"synced runner profiles to DB: updated={sync_result['updated']} skipped={sync_result['skipped']}",
+    )
+
+    # ── Pre-warm Horaro cache ────────────────────────────────────────────────
+    try:
+        cache_args = argparse.Namespace(org="")
+        cmd_cache_past_schedules(cache_args)
+    except Exception:
+        pass  # Non-fatal; per-runner horaro fallback still works
+
+    # ── Load all runs + incentives from DB ──────────────────────────────────
+    runs = xr.read_cross_reference_from_db(db_path)
+    all_incentives = xr.read_incentives_from_db(db_path)
+
+    # ── Apply slug / runner filters ──────────────────────────────────────────
+    slug_set: set[str] = {s.strip() for s in slugs} if slugs else set()
+    twitch_set: set[str] = {t.strip().lower() for t in runner_twitches} if runner_twitches else set()
+
+    if slug_set or twitch_set:
+        filtered: list[xr.RunRow] = []
+        for r in runs:
+            scheduled = r.scheduled
+            if scheduled.tzinfo is None:
+                scheduled = scheduled.replace(tzinfo=TZ)
+            r_slug = run_slug(r.game, r.category, scheduled, r.submission_id or "")
+            r_twitch = (r.runner_twitch or "").strip().lower()
+            if r_slug in slug_set or r_twitch in twitch_set:
+                filtered.append(r)
+        runs = filtered
+        audit_log.write_audit(
+            output_dir, "generate_briefs_llm",
+            f"filtered to {len(runs)} run(s) (slugs={len(slug_set)} runner_twitches={len(twitch_set)})",
+        )
+
+    count = 0
+    errors: list[dict] = []
+
+    def _process_run(r: xr.RunRow) -> dict | None:
+        """Build one brief with LLM prose. Returns error dict or None on success."""
+        scheduled = r.scheduled
+        if scheduled.tzinfo is None:
+            scheduled = scheduled.replace(tzinfo=TZ)
+        slug = run_slug(r.game, r.category, scheduled, r.submission_id or "")
+
+        try:
+            # Deterministic sidecar (DB-primary path)
+            md_fallback, json_data = bb.build_brief(
+                r,
+                incentives=all_incentives,
+                all_runs=runs,
+            )
+
+            # LLM prose (falls back to deterministic md if LLM_DISABLED)
+            # Runner history is NOT passed — it belongs on the runner page.
+            user_prompt = bp.build_user_prompt(
+                mode=mode,
+                run_meta=json_data.get("run_meta", {}),
+                sidecar=json_data,
+            )
+            prose = llm_client.complete(
+                system=bp.SYSTEM_PROMPT,
+                user=user_prompt,
+                disabled_fallback=md_fallback,
+            )
+
+            json_data["mode"] = mode
+
+            md_path = os.path.join(briefs_dir, f"{slug}.md")
+            json_path = os.path.join(briefs_dir, f"{slug}.json")
+
+            with open(md_path, "w") as f:
+                f.write(prose.strip() + "\n")
+            with open(json_path, "w") as f:
+                json.dump(json_data, f, indent=2)
+
+            return None  # success
+
+        except Exception as exc:
+            return {"slug": slug, "error": str(exc)}
+
+    # ── Bounded-concurrency execution ────────────────────────────────────────
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrency) as pool:
+        futures = {pool.submit(_process_run, r): r for r in runs}
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result is None:
+                count += 1
+            else:
+                errors.append(result)
+
+    audit_log.write_audit(
+        output_dir, "generate_briefs_llm",
+        f"completed: {count} briefs written, {len(errors)} errors",
+    )
+
+    return {
+        "count": count,
+        "runner_profiles_updated": sync_result.get("updated", 0),
+        "errors": errors,
+    }
+
+
+def cmd_generate_llm(args) -> None:
+    """CLI handler for the generate-llm subcommand."""
+    slugs = [s.strip() for s in args.slugs.split(",") if s.strip()] if getattr(args, "slugs", "") else None
+    runners = [r.strip() for r in args.runner.split(",") if r.strip()] if getattr(args, "runner", "") else None
+    result = generate_briefs_llm(
+        db_path=getattr(args, "db_path", "") or os.environ.get("DB_PATH", "output/esa.db"),
+        briefs_dir=getattr(args, "briefs_dir", "") or os.environ.get("BRIEFS_DIR", BRIEFS_DIR),
+        mode=getattr(args, "mode", "scan"),
+        max_concurrency=getattr(args, "max_concurrency", 0),
+        refresh_runners=getattr(args, "refresh_runners", False),
+        slugs=slugs,
+        runner_twitches=runners,
+    )
+    print(json.dumps(result, indent=2))
 
 
 # ── CLI parser ───────────────────────────────────────────────────────────────
@@ -1672,10 +1832,6 @@ def main() -> None:
     p_wr.add_argument("--md", help="Markdown brief content")
     p_wr.add_argument("--data", help="JSON sidecar data (serialized)")
     p_wr.add_argument("--force", action="store_true", help="Overwrite HOST NOTES too")
-    p_wr.add_argument(
-        "--with-profile", action="store_true",
-        help="Inject runner profile (summary + stats) into the sidecar JSON",
-    )
     p_wr.set_defaults(func=cmd_write)
 
     # orphans
@@ -1687,6 +1843,43 @@ def main() -> None:
     p_st = sub.add_parser("stale", help="Check spreadsheet staleness")
     p_st.add_argument("--max-age-hours", type=float, default=6.0, dest="max_age_hours")
     p_st.set_defaults(func=cmd_stale)
+
+    # generate-llm
+    p_gl = sub.add_parser(
+        "generate-llm",
+        help="Regenerate all briefs using an LLM (DB source, force overwrite)",
+    )
+    p_gl.add_argument(
+        "--mode", default="scan", choices=["scan", "interview", "full"],
+        help="Brief depth: scan (default), interview, or full",
+    )
+    p_gl.add_argument(
+        "--db-path", default=os.getenv("DB_PATH", "output/esa.db"),
+        dest="db_path", help="Path to SQLite DB",
+    )
+    p_gl.add_argument(
+        "--briefs-dir", default=os.environ.get("BRIEFS_DIR", BRIEFS_DIR),
+        dest="briefs_dir", help="Output directory for brief files",
+    )
+    p_gl.add_argument(
+        "--max-concurrency", type=int, default=0, dest="max_concurrency",
+        help="Max parallel LLM calls (default: LLM_MAX_CONCURRENCY env or 4)",
+    )
+    p_gl.add_argument(
+        "--refresh-runners", action="store_true", dest="refresh_runners",
+        help="Re-fetch runner profiles from SRC before generating briefs (scoped to --runner if supplied)",
+    )
+    p_gl.add_argument(
+        "--slugs", default="",
+        help="Comma-separated run slugs to regenerate (e.g. sm64__120-star__2026-08-01T1400). "
+             "If omitted, all runs are processed.",
+    )
+    p_gl.add_argument(
+        "--runner", default="",
+        help="Comma-separated Twitch handle(s) — regenerate only runs whose primary runner matches. "
+             "Can be combined with --slugs (union).",
+    )
+    p_gl.set_defaults(func=cmd_generate_llm)
 
     parsed = parser.parse_args()
     parsed.func(parsed)

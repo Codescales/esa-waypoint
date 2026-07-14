@@ -19,6 +19,13 @@ ADMIN_SESSION_MAX_AGE = 60 * 60  # 1 hour
 SNAPSHOT_KEEP = int(os.environ.get("SNAPSHOT_KEEP", "10"))
 SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "true").lower() == "true"
 
+# LLM (OpenAI-compatible gateway)
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "")          # e.g. https://api.openai.com/v1
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
+LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
+LLM_MAX_CONCURRENCY = int(os.environ.get("LLM_MAX_CONCURRENCY", "4"))
+LLM_DISABLED = os.environ.get("LLM_DISABLED", "").lower() in ("1", "true", "yes")
+
 
 def validate() -> None:
     """Validate required config at startup. Raises ValueError on misconfiguration."""

@@ -82,6 +82,36 @@ def _sync_briefs_worker(repo: IncentiveRepo, job_id: str) -> None:
         repo.update_job(job_id, status="failed", error=str(e), completed_at=datetime.now(TZ))
 
 
+def _sync_briefs_llm_worker(
+    repo: IncentiveRepo,
+    job_id: str,
+    mode: str = "scan",
+    refresh_runners: bool = False,
+    slugs: list[str] | None = None,
+    runner_twitches: list[str] | None = None,
+) -> None:
+    """Regenerate briefs using LLM prose authoring, updating job status."""
+    try:
+        repo.update_job(job_id, status="running")
+        from src.brief import generate_briefs_llm
+        result = generate_briefs_llm(
+            mode=mode,
+            refresh_runners=refresh_runners,
+            slugs=slugs,
+            runner_twitches=runner_twitches,
+        )
+        summary = json.dumps([{
+            "step": "briefs_llm",
+            "detail": (
+                f"generated {result.get('count', 0)} briefs "
+                f"(runner profiles updated: {result.get('runner_profiles_updated', 0)})"
+            ),
+        }])
+        repo.update_job(job_id, status="succeeded", summary_json=summary, completed_at=datetime.now(TZ))
+    except Exception as e:
+        repo.update_job(job_id, status="failed", error=str(e), completed_at=datetime.now(TZ))
+
+
 def _sync_runners_worker(repo: IncentiveRepo, job_id: str, target: str = "") -> None:
     """Research runner(s), updating job status along the way."""
     try:
@@ -496,6 +526,11 @@ async def sync_schedule(
 
 @router.post("/sync/briefs", response_model=JobDTO)
 async def sync_briefs(
+    engine: str = Query(default="deterministic", description="'deterministic' or 'llm'"),
+    mode: str = Query(default="scan", description="Brief mode for LLM engine: scan | interview | full"),
+    runners: bool = Query(default=False, description="Refresh runner profiles before generating (LLM engine only)"),
+    slugs: str = Query(default="", description="Comma-separated run slugs to target (LLM engine only). Empty = all runs."),
+    runner_filter: str = Query(default="", alias="runner", description="Comma-separated Twitch handles to target (LLM engine only). Empty = all runners."),
     _=Depends(current_admin),
     repo: IncentiveRepo = Depends(get_repo),
 ):
@@ -503,7 +538,22 @@ async def sync_briefs(
         job = repo.create_job(kind="briefs")
     except JobAlreadyRunningError as exc:
         raise HTTPException(status_code=409, detail=f"Briefs sync already running (job {exc.job_id})")
-    await anyio.to_thread.run_sync(_sync_briefs_worker, repo, job.id)
+
+    if engine == "llm":
+        slug_list = [s.strip() for s in slugs.split(",") if s.strip()] or None
+        twitch_list = [t.strip().lower() for t in runner_filter.split(",") if t.strip()] or None
+        await anyio.to_thread.run_sync(
+            lambda: _sync_briefs_llm_worker(
+                repo, job.id,
+                mode=mode,
+                refresh_runners=runners,
+                slugs=slug_list,
+                runner_twitches=twitch_list,
+            )
+        )
+    else:
+        await anyio.to_thread.run_sync(_sync_briefs_worker, repo, job.id)
+
     return repo.get_job(job.id)
 
 

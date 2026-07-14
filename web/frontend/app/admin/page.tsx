@@ -23,6 +23,137 @@ import {
 
 type JobSummary = { step: string; detail: string };
 
+// ── Brief sync panel ──────────────────────────────────────────────────────────
+
+function BriefSyncPanel({ onSync }: { onSync: (fn: () => Promise<JobDTO>, label: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [engine, setEngine] = useState<"deterministic" | "llm">("deterministic");
+  const [mode, setMode] = useState<"scan" | "interview" | "full">("scan");
+  const [slugsInput, setSlugsInput] = useState("");
+  const [runnerInput, setRunnerInput] = useState("");
+  const [refreshRunners, setRefreshRunners] = useState(false);
+
+  function handleRun() {
+    if (engine === "deterministic") {
+      onSync(() => syncBriefs(), "Sync Briefs");
+      return;
+    }
+    const slugs = slugsInput.split(",").map(s => s.trim()).filter(Boolean);
+    const runner = runnerInput.split(",").map(s => s.trim()).filter(Boolean);
+    onSync(
+      () => syncBriefs({
+        engine: "llm",
+        mode,
+        runners: refreshRunners,
+        slugs: slugs.length ? slugs : undefined,
+        runner: runner.length ? runner : undefined,
+      }),
+      `Sync Briefs (LLM · ${mode}${slugs.length || runner.length ? " · filtered" : ""})`,
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <button onClick={handleRun} className="btn btn-sm">
+          sync briefs
+        </button>
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="btn btn-sm btn-b4 px-2"
+          title="Brief sync options"
+          aria-expanded={expanded}
+        >
+          {expanded ? "▲" : "▼"}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="border border-border rounded p-4 space-y-3 text-sm bg-surface/40">
+          {/* Engine */}
+          <div className="flex items-center gap-4">
+            <span className="text-muted font-medium w-24 shrink-0">Engine</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="radio" name="brief-engine" value="deterministic"
+                checked={engine === "deterministic"}
+                onChange={() => setEngine("deterministic")} />
+              deterministic
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="radio" name="brief-engine" value="llm"
+                checked={engine === "llm"}
+                onChange={() => setEngine("llm")} />
+              LLM
+            </label>
+          </div>
+
+          {engine === "llm" && (
+            <>
+              {/* Mode */}
+              <div className="flex items-center gap-4">
+                <span className="text-muted font-medium w-24 shrink-0">Mode</span>
+                {(["scan", "interview", "full"] as const).map(m => (
+                  <label key={m} className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="brief-mode" value={m}
+                      checked={mode === m}
+                      onChange={() => setMode(m)} />
+                    {m}
+                  </label>
+                ))}
+              </div>
+
+              {/* Slug filter */}
+              <div className="flex items-start gap-2">
+                <span className="text-muted font-medium w-24 shrink-0 pt-1.5">Slugs</span>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    className="w-full bg-background border border-border rounded px-2 py-1 text-xs font-mono"
+                    placeholder="sm64__120-star__2026-08-01T1400, portal__inbounds__… (leave blank for all)"
+                    value={slugsInput}
+                    onChange={e => setSlugsInput(e.target.value)}
+                  />
+                  <p className="text-xs text-muted mt-0.5">Comma-separated run slugs. Leave blank to process all runs.</p>
+                </div>
+              </div>
+
+              {/* Runner filter */}
+              <div className="flex items-start gap-2">
+                <span className="text-muted font-medium w-24 shrink-0 pt-1.5">Runners</span>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    className="w-full bg-background border border-border rounded px-2 py-1 text-xs font-mono"
+                    placeholder="speedrunner1, anotherrunner (Twitch handles, leave blank for all)"
+                    value={runnerInput}
+                    onChange={e => setRunnerInput(e.target.value)}
+                  />
+                  <p className="text-xs text-muted mt-0.5">Comma-separated Twitch handles. Combined with slugs as a union.</p>
+                </div>
+              </div>
+
+              {/* Refresh runners */}
+              <div className="flex items-center gap-2">
+                <span className="text-muted font-medium w-24 shrink-0" />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={refreshRunners}
+                    onChange={e => setRefreshRunners(e.target.checked)} />
+                  <span>Re-fetch runner profiles from SRC before generating
+                    <span className="text-muted ml-1">(slow)</span>
+                  </span>
+                </label>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
 export default function AdminPage() {
   const [status, setStatus] = useState<AdminStatus | null>(null);
   const [snapshots, setSnapshots] = useState<AdminSnapshot[]>([]);
@@ -192,7 +323,7 @@ export default function AdminPage() {
       {/* Sync buttons */}
       <section className="card p-5">
         <h2 className="text-lg font-bold mb-3">Sync</h2>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-4 items-start">
           <button
             onClick={() => triggerSync(syncSchedule, "Sync Schedule")}
             disabled={busy}
@@ -200,13 +331,7 @@ export default function AdminPage() {
           >
             sync schedule
           </button>
-          <button
-            onClick={() => triggerSync(syncBriefs, "Sync Briefs")}
-            disabled={busy}
-            className="btn btn-sm"
-          >
-            sync briefs
-          </button>
+          <BriefSyncPanel onSync={triggerSync} />
           <button
             onClick={() => triggerSync(() => syncRunners(), "Sync Runners")}
             disabled={busy}
