@@ -50,7 +50,7 @@ export default function Nav() {
   ];
 
   return (
-    <nav className="bg-surface">
+    <nav className="sticky top-0 z-20 bg-surface">
       <div className="flex items-center gap-4 px-4 py-3">
         <Link
           href="/"

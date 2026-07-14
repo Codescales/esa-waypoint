@@ -136,7 +136,7 @@ function SchedulePageInner() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="sticky top-0 z-10 bg-background flex items-center justify-between mb-4 pb-2 pt-2">
         <h1 className="text-xl font-bold">Schedule</h1>
         <div className="text-sm text-muted font-mono">
           Now:{" "}
@@ -215,6 +215,11 @@ if (state === "in_progress") {
                 return (
                   <tr key={r.slug} className={rowClass}>
                     <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">
+                      {new Date(r.scheduled).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        timeZone: "Europe/Stockholm",
+                      })}{" "}
                       {new Date(r.scheduled).toLocaleTimeString("en-GB", {
                         hour: "2-digit",
                         minute: "2-digit",
