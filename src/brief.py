@@ -1682,11 +1682,23 @@ def generate_briefs_llm(
 
             json_data["mode"] = mode
 
+            # Split off interview material if the sentinel is present.
+            # interview + full modes include <!-- INTERVIEW_MATERIAL --> followed by
+            # talking points and runner questions. Split into prose-only .md and store
+            # the rest as interview_material in the sidecar.
+            sentinel = bp.INTERVIEW_MATERIAL_SENTINEL
+            if sentinel in prose:
+                prose_part, interview_part = prose.split(sentinel, 1)
+                json_data["interview_material"] = interview_part.strip()
+            else:
+                prose_part = prose
+                json_data["interview_material"] = ""
+
             md_path = os.path.join(briefs_dir, f"{slug}.md")
             json_path = os.path.join(briefs_dir, f"{slug}.json")
 
             with open(md_path, "w") as f:
-                f.write(prose.strip() + "\n")
+                f.write(prose_part.strip() + "\n")
             with open(json_path, "w") as f:
                 json.dump(json_data, f, indent=2)
 

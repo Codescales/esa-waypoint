@@ -185,7 +185,7 @@ export interface BriefSidecar {
   runner_section: Record<string, unknown> | null;
   category_section: BriefSidecarCategoryInfo | null;
   game_section: Record<string, unknown> | null;
-  interview_material: string[];
+  interview_material: string;
   siblings: BriefSidecarSibling[];
   sources: BriefSidecarSource[];
   confidence_flags: string[];

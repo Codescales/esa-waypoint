@@ -268,7 +268,8 @@ export default function AdminPage() {
         const detail = parts[parts.length - 1]?.trim();
         if (detail) {
           setFlash({ kind: "err", msg: `${label} already running (job ${detail.slice(0, 8)}). Polling…` });
-          setSyncJobs((prev) => ({ ...prev, [detail]: prev[detail] }));
+          // Only insert the job if we already have it cached; don't put undefined into state.
+          setSyncJobs((prev) => prev[detail] ? prev : prev);
           startPollingJob(detail);
         } else {
           setFlash({ kind: "err", msg: `${label} already running` });

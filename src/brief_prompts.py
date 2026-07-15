@@ -10,11 +10,19 @@ country, PBs) lives on the runner profile page and must NOT appear here.
 
 Three modes:
     scan       Fast overview; what a host needs in 60 seconds.
-    interview  Expanded game/category context + talking points.
-    full       All run-relevant sections at full depth.
+    interview  Expanded game/category context + talking points + interview material.
+    full       All run-relevant sections at full depth + interview material.
+
+Interview material (interview + full modes only):
+    After the main brief the model emits a sentinel and then a separate
+    section hosts can expand for deeper inspiration:
+    - Factual game/category hooks the host can bring up.
+    - Open-ended questions the host can ask the runner on air.
+    Separated from the main prose by:  <!-- INTERVIEW_MATERIAL -->
 """
 
 import json
+import re
 from typing import Any
 
 SYSTEM_PROMPT = """\
@@ -22,17 +30,47 @@ You are an expert marathon host briefing writer for ESA (European Speedrun Assem
 Your job is to write concise, accurate, host-ready markdown briefs for speedruns.
 
 Rules:
-- Write about the RUN: the game, category, world record, strats, incentives, what to watch.
-- Do NOT write about the runner's history, ESA appearances, SRC tenure, communities, country,
-  or personal bests. That information lives on the runner profile page.
-- You may mention the runner's name and link once as identification only.
-- Never fabricate facts. If data is missing, say so briefly.
+- Write about the RUN: the game, category, world record, strats, what to watch.
+- Do NOT write about the runner's history, ESA appearances, SRC tenure, communities, \
+country, or personal bests. That information lives on the runner profile page.
+- You may mention the runner's name once as identification only.
+- When data is unavailable, say so briefly in plain prose (e.g. "world record data \
+unavailable"). Never echo raw warning flags.
 - Do NOT reproduce the raw JSON or repeat every field verbatim — synthesise it.
 - Do NOT include a Sources section — that is added separately.
-- Do NOT include incentives verbatim in the prose — they appear in a separate panel.
+- Incentives are context only. Do NOT include them in the prose — they appear in a \
+separate panel.
 - Headings use ## (h2). Keep the brief scannable.
-- Confidence flags from the sidecar should be mentioned where relevant.
 - Output markdown only. No preamble, no closing remarks.
+"""
+
+INTERVIEW_MATERIAL_SENTINEL = "<!-- INTERVIEW_MATERIAL -->"
+
+INTERVIEW_MATERIAL_INSTRUCTIONS = f"""\
+
+---
+
+After the brief above, output the following sentinel on its own line, then write the \
+interview material section:
+
+{INTERVIEW_MATERIAL_SENTINEL}
+
+## Interview Material
+
+Write two subsections (### h3) for the host's eyes only — this panel is collapsed by \
+default and surfaced on demand.
+
+### Talking Points
+5–7 factual hooks about the game or category the host can raise on air. Each as a \
+bullet. Focus on what makes this game or category interesting to speedrun — tricks, \
+history, competition, route choices, memorable moments.
+
+### Questions for the Runner
+5–7 open-ended questions the host can ask the runner during the segment. Phrase each \
+as a direct question (e.g. "What's the hardest part of this route to execute live?"). \
+Do NOT assert facts about the runner's history, PBs, or ESA appearances — ask open \
+questions that invite the runner to share their own perspective. Frame questions around \
+the game, category, preparation, and the run itself.
 """
 
 
@@ -81,6 +119,16 @@ def _fmt_records(records: list[dict]) -> str:
         runner = r.get("runner", "?")
         time = r.get("time", "?")
         date = r.get("date", "")
+        # Defensive: if time looks like raw seconds (float/int string), format it.
+        if re.fullmatch(r"\d+(\.\d+)?", str(time)):
+            try:
+                total = int(float(time))
+                h = total // 3600
+                m = (total % 3600) // 60
+                s = total % 60
+                time = f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+            except (ValueError, TypeError):
+                pass
         line = f"#{place} {runner} — {time}"
         if date:
             line += f" ({date})"
@@ -120,15 +168,10 @@ def build_user_prompt(
     runner_section = sidecar.get("runner_section") or {}
     category_section = sidecar.get("category_section") or {}
     game_section = sidecar.get("game_section") or {}
-    confidence_flags = sidecar.get("confidence_flags") or []
 
     records_str = _fmt_records(category_section.get("records") or [])
     incentives_str = _fmt_incentives(sidecar.get("incentives") or [])
     siblings_str = _fmt_siblings(sidecar.get("siblings") or [])
-
-    flags_str = ""
-    if confidence_flags:
-        flags_str = "\nConfidence flags:\n" + "\n".join(f"- ⚠ {f}" for f in confidence_flags)
 
     base = f"""\
 Write a host brief for the following speedrun.
@@ -147,27 +190,33 @@ Scheduled: {scheduled}
 {game_section.get("name", game)} ({game_section.get("abbreviation", "")})
 URL: {game_section.get("src_url", "N/A")}
 
-## Category records
+## Category records (this category only)
 {records_str}
 
-## Incentives (for context — do NOT reproduce verbatim in the brief)
+## Incentives (context only — do NOT include in the brief prose)
 {incentives_str}
 
 ## Same-runner runs in this marathon
-{siblings_str}
-{flags_str}"""
+{siblings_str}"""
 
     if mode == "scan":
         return base + """
 
-Write a scan brief: a short, punchy overview for hosts who have 60 seconds.
-Sections to include (##):
-- Game Overview (2–3 sentences: genre, speedrun community, why it's interesting)
-- Category & World Record (what the category involves, current WR holder and time)
-- Things to Watch (2–3 notable moments, skips, tricks, or viewer hooks)
+Write a scan brief: a short, punchy overview for hosts who have 60 seconds to prepare.
+Required sections (## h2) — use exactly these headings:
+## Game Overview
+2–3 sentences: genre, speedrun community, why it's interesting to watch.
 
-Keep each section to 2–4 sentences. Total length: ~200–300 words.
-Mention the runner's name once to identify who is running. No runner history.
+## Category & World Record
+What the category involves, current WR holder and time.
+
+## Things to Watch
+2–3 notable moments, skips, tricks, or viewer hooks specific to this run.
+
+Constraints:
+- Mention the runner's name once to identify who is running. No runner history.
+- Do not exceed 300 words total.
+- No preamble, no closing remarks. Markdown only.
 """
 
     if mode == "interview":
@@ -175,28 +224,44 @@ Mention the runner's name once to identify who is running. No runner history.
 
 Write an interview brief: expanded context for a host conducting an on-air conversation.
 Focus entirely on the game and category. No runner biography.
-Sections to include (##):
-- Game Overview (history, developer, why this game has a speedrun community)
-- Category Deep-Dive (what the category requires, major tricks/skips/strats, rule nuances)
-- World Record & Leaderboard (WR context, how competitive the board is)
-- Talking Points (4–5 concrete topics the host can explore on air about the game/category)
-- Things to Watch (key moments, emotional beats, viewer hooks specific to this category)
+Required sections (## h2) — use exactly these headings:
+## Game Overview
+History, developer, why this game has a speedrun community.
 
-Target length: ~400–500 words.
-"""
+## Category Deep-Dive
+What the category requires, major tricks/skips/strats, rule nuances.
+
+## World Record & Leaderboard
+WR context, how competitive the board is.
+
+## Things to Watch
+Key moments, emotional beats, viewer hooks specific to this category.
+
+Constraints:
+- Do not exceed 500 words for the main brief.
+- No preamble, no closing remarks. Markdown only.
+""" + INTERVIEW_MATERIAL_INSTRUCTIONS
 
     # full
     return base + """
 
 Write a full-depth brief covering everything a host might need for a long segment.
 Focus on the game and category. No runner biography.
-Sections to include (##):
-- Game Overview
-- Category & Rules (full explanation: what counts, major route choices, banned techniques)
-- World Record & Leaderboard (top 3–5 times, WR progression if notable)
-- Marathon Context (incentives and sibling runs the host should set up naturally)
-- Talking Points (5+ topics drawn from the game, category, or incentives)
-- Things to Watch (key moments in the run ordered by rough timing if possible)
+Required sections (## h2) — use exactly these headings:
+## Game Overview
+## Category & Rules
+Full explanation: what counts, major route choices, banned techniques.
 
-Target length: ~600–800 words.
-"""
+## World Record & Leaderboard
+Top 3–5 times, WR progression if notable.
+
+## Sibling Runs
+Set up any same-runner runs in this marathon naturally.
+
+## Things to Watch
+Key moments ordered by rough timing if possible.
+
+Constraints:
+- Do not exceed 800 words for the main brief.
+- No preamble, no closing remarks. Markdown only.
+""" + INTERVIEW_MATERIAL_INSTRUCTIONS

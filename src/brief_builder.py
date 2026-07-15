@@ -35,6 +35,27 @@ from .src_api import (
 TZ = ZoneInfo("Europe/Stockholm")
 
 
+def seconds_to_hms(sec: Any) -> str:
+    """Format a seconds value as a smart speedrun time string.
+
+    Omits the hours component when the time is under one hour:
+        98307  -> "1:21:47"
+        2307   -> "38:27"
+        5907.0 -> "1:38:27"
+        None   -> "?"
+    """
+    try:
+        total = int(float(sec))
+    except (TypeError, ValueError):
+        return "?"
+    h = total // 3600
+    m = (total % 3600) // 60
+    s = total % 60
+    if h:
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m}:{s:02d}"
+
+
 def build_brief(
     run_row: xr.RunRow,
     spreadsheet_path: str = "",
@@ -198,26 +219,37 @@ def _add_game_and_category_info(
     json_data["sources"].append({"name": "speedrun.com", "url": src_url})
     md_parts.append(f"SRC: [{abbr}]({src_url})  \n")
 
+    matching_cat = None
     try:
         cats = fetch_src_categories(game_id)
-        matching_cat = None
         for c in cats:
             if c["name"].lower() == category_name.lower():
                 matching_cat = c
                 break
         if matching_cat:
             md_parts.append(f"Category type: {matching_cat.get('type', '')}  \n")
+        else:
+            json_data["confidence_flags"].append(
+                f"Category '{category_name}' not found on SRC — records may cover wrong category"
+            )
     except SrcApiError:
         json_data["confidence_flags"].append("Could not fetch SRC categories")
 
     try:
-        records = fetch_game_records(game_id)
-        if records:
-            # Normalize SRC record fields to match BriefSidecarCategoryRecord
+        all_records = fetch_game_records(game_id)
+        # Filter to the matched category so we don't show records for the wrong category.
+        if matching_cat:
+            cat_id = matching_cat["id"]
+            cat_records = [r for r in all_records if r.get("category_id") == cat_id]
+        else:
+            # No category match — fall back to all records with a flag already set above.
+            cat_records = all_records
+
+        if cat_records:
             normalized = []
-            for i, rec in enumerate(records):
+            for i, rec in enumerate(cat_records):
                 wr_sec = rec.get("wr_seconds")
-                time_str = str(wr_sec) if wr_sec is not None else ""
+                time_str = seconds_to_hms(wr_sec)
                 normalized.append({
                     "place": i + 1,
                     "runner": rec.get("runner_name") or rec.get("runner_id") or "?",

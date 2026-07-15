@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Union
+from pydantic import BaseModel, field_validator
 
 
 class JobDTO(BaseModel):
@@ -133,7 +133,17 @@ class BriefSidecar(BaseModel):
     runner_section: Optional[dict] = None
     category_section: Optional[BriefSidecarCategoryInfo] = None
     game_section: Optional[dict] = None
-    interview_material: list[str] = []
+    interview_material: str = ""
+
+    @field_validator("interview_material", mode="before")
+    @classmethod
+    def _coerce_interview_material(cls, v: object) -> str:
+        """Accept legacy list values (old sidecar files on disk) and coerce to str."""
+        if isinstance(v, list):
+            return "\n\n".join(str(i) for i in v) if v else ""
+        if v is None:
+            return ""
+        return v  # type: ignore[return-value]
     siblings: list[BriefSidecarSibling] = []
     sources: list[BriefSidecarSource] = []
     confidence_flags: list[str] = []

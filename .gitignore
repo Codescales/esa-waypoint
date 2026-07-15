@@ -1,4 +1,6 @@
 output/
+web/frontend/public/assets/*
+!web/frontend/public/assets/.gitkeep
 tiltify_session*.json
 __pycache__/
 *.pyc

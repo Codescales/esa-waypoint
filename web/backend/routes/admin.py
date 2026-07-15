@@ -91,6 +91,8 @@ def _sync_briefs_llm_worker(
     runner_twitches: list[str] | None = None,
 ) -> None:
     """Regenerate briefs using LLM prose authoring, updating job status."""
+    import logging
+    logger = logging.getLogger("esa.admin")
     try:
         repo.update_job(job_id, status="running")
         from src.brief import generate_briefs_llm
@@ -107,8 +109,11 @@ def _sync_briefs_llm_worker(
                 f"(runner profiles updated: {result.get('runner_profiles_updated', 0)})"
             ),
         }])
+        if result.get("errors"):
+            logger.error("LLM brief errors: %s", json.dumps(result["errors"][:5]))
         repo.update_job(job_id, status="succeeded", summary_json=summary, completed_at=datetime.now(TZ))
     except Exception as e:
+        logger.exception("LLM brief sync failed")
         repo.update_job(job_id, status="failed", error=str(e), completed_at=datetime.now(TZ))
 
 

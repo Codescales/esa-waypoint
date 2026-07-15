@@ -193,6 +193,7 @@ class TestBriefPrompts:
             "incentives": [{"category": "Reward", "description": "Name a Bob-omb", "estimate": "0:01:00"}],
             "siblings": [],
             "confidence_flags": [],
+            "interview_material": "",
         }
 
     def test_scan_prompt_nonempty(self):
@@ -236,6 +237,58 @@ class TestBriefPrompts:
         rs = sd["runner_section"]
         assert "pb_count" not in rs
         assert "top_games" not in rs
+
+    def test_system_prompt_does_not_instruct_surfacing_raw_flags(self):
+        """System prompt must not tell the model to echo raw confidence flags in prose."""
+        from src.brief_prompts import SYSTEM_PROMPT
+        # The old instruction was: "Confidence flags from the sidecar should be mentioned where relevant."
+        assert "confidence flag" not in SYSTEM_PROMPT.lower(), \
+            "System prompt must not instruct the model to echo raw confidence flags"
+
+    def test_wr_time_in_prompt_is_formatted(self):
+        """Records passed to the prompt must use formatted times, not raw seconds."""
+        from src.brief_prompts import build_user_prompt
+        sd = self._sidecar()
+        # Simulate a sidecar where time was stored as raw seconds (regression guard)
+        sd["category_section"]["records"] = [
+            {"place": 1, "runner": "cheese05", "time": "5907.0", "date": "2024-01-01"}
+        ]
+        prompt = build_user_prompt(mode="scan", run_meta=sd["run_meta"], sidecar=sd)
+        # Raw float seconds must not appear in the prompt
+        assert "5907.0" not in prompt, \
+            "Raw float seconds must not be passed to the LLM — use formatted time instead"
+
+    def test_scan_prompt_has_no_sentinel(self):
+        """Scan mode must not include the interview material sentinel."""
+        from src.brief_prompts import build_user_prompt, INTERVIEW_MATERIAL_SENTINEL
+        sd = self._sidecar()
+        prompt = build_user_prompt(mode="scan", run_meta=sd["run_meta"], sidecar=sd)
+        assert INTERVIEW_MATERIAL_SENTINEL not in prompt, \
+            "Scan mode must not instruct the model to emit interview material"
+
+    def test_interview_prompt_has_sentinel(self):
+        """Interview mode must include the sentinel instruction."""
+        from src.brief_prompts import build_user_prompt, INTERVIEW_MATERIAL_SENTINEL
+        sd = self._sidecar()
+        prompt = build_user_prompt(mode="interview", run_meta=sd["run_meta"], sidecar=sd)
+        assert INTERVIEW_MATERIAL_SENTINEL in prompt, \
+            "Interview mode must instruct the model to emit interview material after the sentinel"
+
+    def test_full_prompt_has_sentinel(self):
+        """Full mode must include the sentinel instruction."""
+        from src.brief_prompts import build_user_prompt, INTERVIEW_MATERIAL_SENTINEL
+        sd = self._sidecar()
+        prompt = build_user_prompt(mode="full", run_meta=sd["run_meta"], sidecar=sd)
+        assert INTERVIEW_MATERIAL_SENTINEL in prompt
+
+    def test_interview_prompt_instructs_runner_questions(self):
+        """Interview/full prompts must ask for questions directed at the runner."""
+        from src.brief_prompts import build_user_prompt
+        sd = self._sidecar()
+        for mode in ("interview", "full"):
+            prompt = build_user_prompt(mode=mode, run_meta=sd["run_meta"], sidecar=sd)
+            assert "question" in prompt.lower(), \
+                f"{mode} mode must instruct the model to generate questions for the runner"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -289,6 +342,9 @@ class TestGenerateBriefsLlm:
             assert "siblings" in data
             assert "confidence_flags" in data
             assert "run_meta" in data
+            # interview_material must be a string (markdown or empty)
+            assert isinstance(data.get("interview_material", ""), str), \
+                "interview_material must be a string in the sidecar"
             # Runner history must NOT be in the run sidecar
             assert "runner_profile" not in data, "runner_profile must not appear in run sidecar"
             assert "runner_profiles" not in data, "runner_profiles must not appear in run sidecar"

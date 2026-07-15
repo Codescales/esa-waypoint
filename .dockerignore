@@ -16,3 +16,29 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Python
+*.egg-info/
+dist/
+build/
+
+# Tests
+tests/
+coverage/
+htmlcov/
+.coveragerc
+
+# Docs
+docs/
+README.md
+
+# Scripts
+scripts/
+dev.sh
+
+# Output
+output/
+
+# Lockfiles (not needed in build context)
+uv.lock
+package-lock.json
