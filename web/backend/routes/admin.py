@@ -542,15 +542,13 @@ async def sync_briefs(
     if engine == "llm":
         slug_list = [s.strip() for s in slugs.split(",") if s.strip()] or None
         twitch_list = [t.strip().lower() for t in runner_filter.split(",") if t.strip()] or None
-        await anyio.to_thread.run_sync(
-            lambda: _sync_briefs_llm_worker(
-                repo, job.id,
-                mode=mode,
-                refresh_runners=runners,
-                slugs=slug_list,
-                runner_twitches=twitch_list,
-            )
-        )
+        import threading
+        threading.Thread(
+            target=_sync_briefs_llm_worker,
+            args=(repo, job.id),
+            kwargs=dict(mode=mode, refresh_runners=runners, slugs=slug_list, runner_twitches=twitch_list),
+            daemon=True,
+        ).start()
     else:
         await anyio.to_thread.run_sync(_sync_briefs_worker, repo, job.id)
 
