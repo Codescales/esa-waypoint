@@ -62,8 +62,6 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: false
-          sbom: false
 
       - name: Trivy scan frontend image
         uses: aquasecurity/trivy-action@v0.36.0
