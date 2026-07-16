@@ -40,5 +40,4 @@ dev.sh
 output/
 
 # Lockfiles (not needed in build context)
-uv.lock
 package-lock.json
