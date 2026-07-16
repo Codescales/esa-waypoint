@@ -2,12 +2,10 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 COPY web/frontend/package*.json ./
-ENV NODE_OPTIONS="--jitless"
-RUN npm ci && npm cache clean --force
+RUN NODE_OPTIONS="--jitless" npm ci && npm cache clean --force
 
 COPY web/frontend/ ./
 ENV NEXT_PUBLIC_API_URL=http://backend:8000
-ENV NODE_OPTIONS="--jitless"
 RUN npm run build
 
 FROM node:22-alpine AS runner
