@@ -13,9 +13,6 @@ endpoint = ${B2_ENDPOINT:-https://s3.us-west-004.backblazeb2.com}
 acl = private
 EOF
 
-# Write crontab
-echo "${BACKUP_CRON:-0 * * * *} /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1" > /var/spool/cron/crontabs/root
-
 # Start cron in foreground
 echo "[backup] Starting cron with schedule: ${BACKUP_CRON:-0 * * * *}"
 crond -f -l 2

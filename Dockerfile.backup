@@ -5,14 +5,11 @@ RUN apk add --no-cache rclone dcron bash
 COPY scripts/backup.sh /usr/local/bin/backup.sh
 RUN chmod +x /usr/local/bin/backup.sh
 
-RUN mkdir -p /config/rclone /app/output && \
-    addgroup -S app && adduser -S -G app app && \
-    chown -R app:app /config/rclone /app/output
+RUN mkdir -p /config/rclone /app/output
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER app
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD pgrep crond > /dev/null || exit 1
 
