@@ -32,10 +32,6 @@ htmlcov/
 docs/
 README.md
 
-# Scripts
-scripts/
-dev.sh
-
 # Output
 output/
 
