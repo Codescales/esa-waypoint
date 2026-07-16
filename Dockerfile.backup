@@ -1,6 +1,6 @@
 FROM alpine:3.19
 
-RUN apk add --no-cache rclone=1.66.0-r0 dcron=4.5-r0 bash=5.2.21-r0
+RUN apk add --no-cache rclone dcron bash
 
 COPY scripts/backup.sh /usr/local/bin/backup.sh
 RUN chmod +x /usr/local/bin/backup.sh
