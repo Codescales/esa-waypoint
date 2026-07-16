@@ -14,3 +14,7 @@ CVE-2026-42497
 # perl: Heap buffer overflow when compiling regular expressions
 # perl-base in Debian slim; not exploitable in our container
 CVE-2026-8376
+
+# perl: silently incorrect regular expression results
+# perl-base in Debian slim; not exploitable in our container
+CVE-2026-13221
