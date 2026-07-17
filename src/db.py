@@ -15,7 +15,7 @@ from typing import Optional
 from sqlmodel import Field, SQLModel, create_engine, text
 
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 class Run(SQLModel, table=True):
@@ -167,6 +167,25 @@ class Job(SQLModel, table=True):
     completed_at: Optional[datetime] = None
 
 
+class NewsItem(SQLModel, table=True):
+    __tablename__ = "news_item"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # source: "speedrun" | "rss" (| "igdb" later)
+    source: str = Field(index=True)
+    # category: "wr" | "new_run" | "news"
+    category: str = ""
+    # feed/source display label (e.g. "GameSpot", "speedrun.com")
+    source_label: str = ""
+    title: str
+    url: str = ""
+    summary: str = ""
+    published_at: Optional[datetime] = Field(default=None, index=True)
+    fetched_at: datetime
+    # dedupe_key uniquely identifies an item across refreshes (source + external id/url)
+    dedupe_key: str = Field(unique=True, index=True)
+
+
 def parse_estimate_to_seconds(estimate: str) -> int:
     """Parse an estimate string (HH:MM:SS or MM:SS) to total seconds.
 
@@ -241,6 +260,7 @@ def init_db(db_path: str) -> None:
       (re-import required). Existing snapshot covers backup.
     - v4→v5: adds pronunciation column to run_participant and runner
     - v5→v6: adds details column to incentive
+    - v6→v7: adds news_item table (created via create_all)
     Seeding only happens on a fresh DB (no hosts present).
     """
     engine = make_engine(db_path)
@@ -347,6 +367,11 @@ def init_db(db_path: str) -> None:
                 conn.execute(text(
                     "ALTER TABLE incentive ADD COLUMN details TEXT NOT NULL DEFAULT ''"
                 ))
+            conn.execute(text(f"PRAGMA user_version = {SCHEMA_VERSION}"))
+            conn.commit()
+        elif existing == 6:
+            # v6 → v7: add news_item table. create_all (run above) already
+            # created it with its unique index on dedupe_key; just stamp version.
             conn.execute(text(f"PRAGMA user_version = {SCHEMA_VERSION}"))
             conn.commit()
 

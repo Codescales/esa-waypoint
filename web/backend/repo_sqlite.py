@@ -18,9 +18,9 @@ from sqlmodel import Session, select
 from .models import (
     IncentiveDTO, IncentivePatch, IncentiveCreateRequest,
     RunDTO, StaleInfo, RunnerDTO, RunnerProfileDTO, RunnerPBDTO, RunnerPBEntry,
-    JobDTO, JobAlreadyRunningError, ParticipantDTO,
+    JobDTO, JobAlreadyRunningError, ParticipantDTO, NewsItemDTO,
 )
-from src.db import Incentive, Run, RunParticipant, Runner, Job, make_engine
+from src.db import Incentive, Run, RunParticipant, Runner, Job, NewsItem, make_engine
 from src.slugs import runner_slug
 from src import audit as audit_log
 
@@ -682,3 +682,87 @@ class SqliteIncentiveRepo:
             s.commit()
             s.refresh(job)
             return self._job_to_dto(job)
+
+    # ------------------------------------------------------------------
+    # News ticker
+    # ------------------------------------------------------------------
+
+    def _news_to_dto(self, item: NewsItem) -> NewsItemDTO:
+        return NewsItemDTO(
+            id=item.id or 0,
+            source=item.source,
+            category=item.category,
+            source_label=item.source_label,
+            title=item.title,
+            url=item.url,
+            summary=item.summary,
+            published_at=item.published_at,
+            fetched_at=item.fetched_at,
+        )
+
+    def schedule_game_names(self) -> list[str]:
+        """Distinct game names in the schedule (for speedrun news lookup)."""
+        with Session(self._engine()) as s:
+            rows = s.exec(select(Run.game).distinct()).all()
+        return sorted({(g or "").strip() for g in rows if (g or "").strip()})
+
+    def list_news(self, limit: int = 50) -> list[NewsItemDTO]:
+        """Return news items ordered by recency (published, then fetched)."""
+        with Session(self._engine()) as s:
+            rows = s.exec(select(NewsItem)).all()
+        rows.sort(
+            key=lambda n: (
+                n.published_at or n.fetched_at,
+                n.fetched_at,
+            ),
+            reverse=True,
+        )
+        return [self._news_to_dto(n) for n in rows[:limit]]
+
+    def upsert_news_items(self, items: list[dict]) -> int:
+        """Insert news items, skipping any whose dedupe_key already exists.
+
+        Returns the number of newly inserted rows. Idempotent across refreshes.
+        """
+        now = datetime.now(TZ).replace(tzinfo=None)
+        inserted = 0
+        with Session(self._engine()) as s:
+            existing_keys = set(
+                s.exec(select(NewsItem.dedupe_key)).all()
+            )
+            for it in items:
+                key = it.get("dedupe_key")
+                if not key or key in existing_keys:
+                    continue
+                published = it.get("published_at")
+                if isinstance(published, datetime) and published.tzinfo is not None:
+                    published = published.astimezone(TZ).replace(tzinfo=None)
+                s.add(NewsItem(
+                    source=it.get("source", ""),
+                    category=it.get("category", ""),
+                    source_label=it.get("source_label", ""),
+                    title=it.get("title", ""),
+                    url=it.get("url", ""),
+                    summary=it.get("summary", ""),
+                    published_at=published,
+                    fetched_at=now,
+                    dedupe_key=key,
+                ))
+                existing_keys.add(key)
+                inserted += 1
+            s.commit()
+        return inserted
+
+    def prune_news(self, keep: int = 100) -> int:
+        """Keep the newest `keep` items, delete the rest. Returns deleted count."""
+        with Session(self._engine()) as s:
+            rows = s.exec(select(NewsItem)).all()
+            rows.sort(
+                key=lambda n: (n.published_at or n.fetched_at, n.fetched_at),
+                reverse=True,
+            )
+            to_delete = rows[keep:]
+            for n in to_delete:
+                s.delete(n)
+            s.commit()
+        return len(to_delete)

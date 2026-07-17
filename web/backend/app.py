@@ -18,6 +18,7 @@ from .routes import admin as admin_routes
 from .routes import notes as notes_routes
 from .routes import runner_notes as runner_notes_routes
 from .routes import runners as runners_routes
+from .routes import news as news_routes
 from src.db import init_db, orphan_job_sweep
 
 _STATIC = Path(__file__).parent / "static"
@@ -56,6 +57,7 @@ app.include_router(notes_routes.router)
 app.include_router(runner_notes_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(runners_routes.router)
+app.include_router(news_routes.router)
 
 
 # ── AI / tool discovery endpoints ────────────────────────────────────────────

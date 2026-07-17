@@ -27,6 +27,15 @@ LLM_MAX_CONCURRENCY = int(os.environ.get("LLM_MAX_CONCURRENCY", "4"))
 LLM_DISABLED = os.environ.get("LLM_DISABLED", "").lower() in ("1", "true", "yes")
 LLM_VERIFY_SSL = os.environ.get("LLM_VERIFY_SSL", "true").lower() in ("1", "true", "yes")
 
+# News ticker
+_DEFAULT_RSS_FEEDS = "https://www.theverge.com/games/rss/index.xml,https://www.gamespot.com/feeds/news"
+NEWS_RSS_FEEDS = [
+    u.strip() for u in os.environ.get("NEWS_RSS_FEEDS", _DEFAULT_RSS_FEEDS).split(",") if u.strip()
+]
+NEWS_SPEEDRUN_TOP_N = int(os.environ.get("NEWS_SPEEDRUN_TOP_N", "3"))
+NEWS_RSS_MAX_PER_FEED = int(os.environ.get("NEWS_RSS_MAX_PER_FEED", "10"))
+NEWS_MAX_ITEMS = int(os.environ.get("NEWS_MAX_ITEMS", "100"))
+
 
 def validate() -> None:
     """Validate required config at startup. Raises ValueError on misconfiguration."""

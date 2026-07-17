@@ -20,6 +20,18 @@ class JobAlreadyRunningError(Exception):
         self.job_id = job_id
 
 
+class NewsItemDTO(BaseModel):
+    id: int
+    source: str
+    category: str = ""
+    source_label: str = ""
+    title: str
+    url: str = ""
+    summary: str = ""
+    published_at: Optional[datetime] = None
+    fetched_at: datetime
+
+
 class ParticipantDTO(BaseModel):
     slug: str = ""
     display_name: str = ""

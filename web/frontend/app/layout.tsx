@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bebas_Neue, Cabin, Barlow_Condensed, Oswald } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
+import NewsTicker from "@/components/NewsTicker";
 
 import ThemeProvider from "@/components/ThemeProvider";
 
@@ -48,6 +49,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <Nav />
+          <NewsTicker />
           <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6">
             {children}
           </main>

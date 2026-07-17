@@ -95,6 +95,33 @@ paths:
                 type: array
                 items:
                   type: string
+  /api/news:
+    get:
+      tags:
+      - news
+      summary: List News
+      description: Gaming/speedrun news items for the host ticker (speedrun.com WRs/new
+        runs + RSS gaming news). Requires host or admin session.
+      operationId: list_news_api_news_get
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 200
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NewsItemDTO'
   /api/runs:
     get:
       tags:
@@ -1010,6 +1037,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobDTO'
+  /api/admin/sync/news:
+    post:
+      tags:
+      - admin
+      summary: Sync News
+      description: Fetch gaming/speedrun news for the current schedule's games (speedrun.com)
+        plus configured RSS feeds, then upsert and prune. Requires admin session.
+      operationId: sync_news_api_admin_sync_news_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDTO'
   /api/admin/sync/briefs:
     post:
       tags:
@@ -1438,6 +1480,47 @@ components:
       title: IncentivePatch
       description: Editable fields on an incentive. All optional — only set fields
         are updated.
+    NewsItemDTO:
+      properties:
+        id:
+          type: integer
+          title: Id
+        source:
+          type: string
+          title: Source
+          description: '"speedrun" or "rss"'
+        category:
+          type: string
+          title: Category
+          description: '"wr", "new_run", or "news"'
+        source_label:
+          type: string
+          title: Source Label
+        title:
+          type: string
+          title: Title
+        url:
+          type: string
+          title: Url
+        summary:
+          type: string
+          title: Summary
+        published_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Published At
+        fetched_at:
+          type: string
+          format: date-time
+          title: Fetched At
+      type: object
+      required:
+      - id
+      - source
+      - title
+      - fetched_at
     JobDTO:
       properties:
         id:

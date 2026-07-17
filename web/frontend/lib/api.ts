@@ -216,6 +216,18 @@ export interface StaleInfo {
   is_missing: boolean;
 }
 
+export interface NewsItem {
+  id: number;
+  source: string; // "speedrun" | "rss"
+  category: string; // "wr" | "new_run" | "news"
+  source_label: string;
+  title: string;
+  url: string;
+  summary: string;
+  published_at: string | null;
+  fetched_at: string;
+}
+
 function getApiBase(): string {
   if (typeof window !== "undefined") {
     // Browser — relative URLs resolve against origin automatically
@@ -282,6 +294,10 @@ export function getHealth(): Promise<StaleInfo> {
 
 export function getStreams(): Promise<string[]> {
   return fetchApi("/api/streams");
+}
+
+export function getNews(limit = 50): Promise<NewsItem[]> {
+  return fetchApi(`/api/news?limit=${limit}`);
 }
 
 export function getRuns(params?: {
@@ -559,6 +575,10 @@ export function syncBriefs(params?: {
 export function syncRunners(slug?: string): Promise<JobDTO> {
   const q = slug ? `?slug=${encodeURIComponent(slug)}` : "";
   return fetchAdmin(`/api/admin/sync/runners${q}`, { method: "POST" });
+}
+
+export function syncNews(): Promise<JobDTO> {
+  return fetchAdmin("/api/admin/sync/news", { method: "POST" });
 }
 
 // Note types

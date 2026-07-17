@@ -35,6 +35,7 @@ def _build_app(repo):
     from web.backend.routes import notes as notes_routes
     from web.backend.routes import runner_notes as runner_notes_routes
     from web.backend.routes import runners as runners_routes
+    from web.backend.routes import news as news_routes
     app = FastAPI()
     app.include_router(health.router)
     app.include_router(auth_routes.router)
@@ -46,6 +47,7 @@ def _build_app(repo):
     app.include_router(runner_notes_routes.router)
     app.include_router(admin_routes.router)
     app.include_router(runners_routes.router)
+    app.include_router(news_routes.router)
     app.dependency_overrides[get_repo] = lambda: repo
     app.state.repo = repo
     return app

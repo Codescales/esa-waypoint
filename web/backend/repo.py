@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, Protocol
 
-from .models import RunDTO, IncentiveDTO, IncentivePatch, IncentiveCreateRequest, StaleInfo, RunnerDTO, JobDTO, RunnerProfileDTO, RunnerPBDTO, ParticipantDTO
+from .models import RunDTO, IncentiveDTO, IncentivePatch, IncentiveCreateRequest, StaleInfo, RunnerDTO, JobDTO, RunnerProfileDTO, RunnerPBDTO, ParticipantDTO, NewsItemDTO
 from src.slugs import runner_slug
 from src.db import parse_estimate_to_seconds
 
@@ -120,6 +120,14 @@ class IncentiveRepo(Protocol):
     def update_runner(self, slug: str, patch: dict) -> Optional[RunnerDTO]: ...
 
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]: ...
+
+    def schedule_game_names(self) -> list[str]: ...
+
+    def list_news(self, limit: int = 50) -> list[NewsItemDTO]: ...
+
+    def upsert_news_items(self, items: list[dict]) -> int: ...
+
+    def prune_news(self, keep: int = 100) -> int: ...
 
 
 class XlsxIncentiveRepo:
@@ -334,3 +342,15 @@ class XlsxIncentiveRepo:
 
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]:
         raise NotImplementedError("update_run requires REPO_TYPE=sqlite")
+
+    def schedule_game_names(self) -> list[str]:
+        raise NotImplementedError("schedule_game_names requires REPO_TYPE=sqlite")
+
+    def list_news(self, limit: int = 50) -> list[NewsItemDTO]:
+        raise NotImplementedError("list_news requires REPO_TYPE=sqlite")
+
+    def upsert_news_items(self, items: list[dict]) -> int:
+        raise NotImplementedError("upsert_news_items requires REPO_TYPE=sqlite")
+
+    def prune_news(self, keep: int = 100) -> int:
+        raise NotImplementedError("prune_news requires REPO_TYPE=sqlite")

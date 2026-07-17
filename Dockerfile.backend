@@ -12,7 +12,7 @@ RUN uv sync --frozen --no-dev --no-cache
 
 FROM python:3.12-alpine
 
-RUN apk add --no-cache ca-certificates && \
+RUN apk add --no-cache ca-certificates=20260611-r0 && \
     addgroup -S -g 1001 app && adduser -S -u 1001 -G app app && \
     mkdir -p /app/output
 

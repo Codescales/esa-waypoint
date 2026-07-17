@@ -14,6 +14,7 @@ import {
   syncSchedule,
   syncBriefs,
   syncRunners,
+  syncNews,
   type AdminStatus,
   type AdminSnapshot,
   type AdminAuditEntry,
@@ -339,6 +340,13 @@ export default function AdminPage() {
             className="btn btn-sm"
           >
             sync runners
+          </button>
+          <button
+            onClick={() => triggerSync(syncNews, "Sync News")}
+            disabled={busy}
+            className="btn btn-sm"
+          >
+            refresh news
           </button>
         </div>
         {activeSyncs.length > 0 && (

@@ -11,5 +11,16 @@
       "matchUpdateTypes": ["patch"],
       "automerge": true
     }
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": ["(^|/|\\.)(Dockerfile|Containerfile)$"],
+      "matchStrings": [
+        "apk add --no-cache (?<depName>\\S+)=(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "repology",
+      "depTypeTemplate": "apk",
+      "versioningTemplate": "loose"
+    }
   ]
 }

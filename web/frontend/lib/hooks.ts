@@ -6,8 +6,10 @@ import {
   patchIncentive,
   deleteIncentive,
   createIncentive,
+  getNews,
   Incentive,
   IncentiveCreateRequest,
+  NewsItem,
 } from "@/lib/api";
 
 export function useIncentives(opts?: string | { runSlug?: string; upcoming?: boolean }) {
@@ -60,4 +62,37 @@ export function useIncentives(opts?: string | { runSlug?: string; upcoming?: boo
     removeIncentive,
     addIncentive,
   };
+}
+
+/**
+ * Poll the news ticker endpoint on an interval.
+ * Silent on error (ticker just stays empty / shows last data).
+ */
+export function useNews(pollMs = 60000) {
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      getNews()
+        .then((items) => {
+          if (active) setNews(items);
+        })
+        .catch(() => {
+          /* keep prior items; ticker is non-critical */
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    };
+    load();
+    const id = setInterval(load, pollMs);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, [pollMs]);
+
+  return { news, loading };
 }

@@ -225,3 +225,27 @@ h1, h2, h3 {
 /* Flash banner (admin) — gradient surface on ok, red border on err */
 .flash-ok    { color: var(--green); background: rgba(92,189,125,.08); border: 1px solid rgba(92,189,125,.3); }
 .flash-err   { color: var(--red); background: rgba(252,28,103,.08); border: 1px solid rgba(252,28,103,.3); }
+
+/* News ticker marquee */
+.ticker-track {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker-marquee var(--ticker-duration, 60s) linear infinite;
+}
+.ticker-viewport:hover .ticker-track {
+  animation-play-state: paused;
+}
+@keyframes ticker-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+  .ticker-viewport {
+    overflow-x: auto;
+  }
+}

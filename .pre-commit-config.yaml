@@ -49,6 +49,12 @@ repos:
         language: system
         files: ^Dockerfile\.frontend$
 
+      - id: hadolint-backup
+        name: hadolint (Dockerfile.backup)
+        entry: hadolint Dockerfile.backup
+        language: system
+        files: ^Dockerfile\.backup$
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.2
     hooks:

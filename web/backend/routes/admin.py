@@ -59,6 +59,37 @@ def _sync_schedule_worker(repo: IncentiveRepo, job_id: str) -> None:
         repo.update_job(job_id, status="failed", error=str(e), completed_at=datetime.now(TZ))
 
 
+def _sync_news_worker(repo: IncentiveRepo, job_id: str) -> None:
+    """Fetch gaming/speedrun news for the schedule's games + RSS feeds."""
+    try:
+        repo.update_job(job_id, status="running")
+
+        from src import news as news_mod
+
+        game_names = repo.schedule_game_names()
+        result = news_mod.collect_news(
+            repo,
+            game_names,
+            config.NEWS_RSS_FEEDS,
+            speedrun_top_n=config.NEWS_SPEEDRUN_TOP_N,
+            rss_max_per_feed=config.NEWS_RSS_MAX_PER_FEED,
+            max_items=config.NEWS_MAX_ITEMS,
+        )
+
+        summary = json.dumps([
+            {"step": "fetch", "detail": f"{result['speedrun']} speedrun, {result['rss']} rss ({result['fetched']} total)"},
+            {"step": "store", "detail": f"{result['inserted']} new, {result['pruned']} pruned"},
+        ])
+        try:
+            audit_log.write_audit(get_briefs_dir(), "sync_news", summary)
+        except Exception:
+            pass
+
+        repo.update_job(job_id, status="succeeded", summary_json=summary, completed_at=datetime.now(TZ))
+    except Exception as e:
+        repo.update_job(job_id, status="failed", error=str(e), completed_at=datetime.now(TZ))
+
+
 def _stub_work(repo: IncentiveRepo, job_id: str, kind: str, target: str = "") -> None:
     """Stub sync worker: sleeps 2s then marks succeeded."""
     import time
@@ -526,6 +557,19 @@ async def sync_schedule(
     except JobAlreadyRunningError as exc:
         raise HTTPException(status_code=409, detail=f"Schedule sync already running (job {exc.job_id})")
     await anyio.to_thread.run_sync(_sync_schedule_worker, repo, job.id)
+    return repo.get_job(job.id)
+
+
+@router.post("/sync/news", response_model=JobDTO)
+async def sync_news(
+    _=Depends(current_admin),
+    repo: IncentiveRepo = Depends(get_repo),
+):
+    try:
+        job = repo.create_job(kind="news")
+    except JobAlreadyRunningError as exc:
+        raise HTTPException(status_code=409, detail=f"News sync already running (job {exc.job_id})")
+    await anyio.to_thread.run_sync(_sync_news_worker, repo, job.id)
     return repo.get_job(job.id)
 
 

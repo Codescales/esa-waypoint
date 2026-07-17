@@ -47,9 +47,11 @@ jobs:
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.backend
+          failure-threshold: error
       - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile.frontend
+          failure-threshold: error
 
   secrets:
     runs-on: ubuntu-latest
