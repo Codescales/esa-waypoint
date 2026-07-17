@@ -18,6 +18,8 @@ import {
   STATUS_PILL,
 } from "@/lib/incentiveConstants";
 
+type SortKey = "time" | "game";
+
 export default function AdminIncentivesPage() {
   return <AdminIncentivesTable />;
 }
@@ -28,6 +30,7 @@ function AdminIncentivesTable() {
   const [filterCategory, setFilterCategory] = useState("");
   const [showRemoved, setShowRemoved] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("time");
 
   const filtered = useMemo(() => {
     let f = incentives;
@@ -36,6 +39,20 @@ function AdminIncentivesTable() {
     if (filterCategory) f = f.filter((x) => x.incentive_category === filterCategory);
     return f;
   }, [incentives, showRemoved, filterStatus, filterCategory]);
+
+  const sorted = useMemo(() => {
+    const f = [...filtered];
+    if (sortKey === "game") {
+      f.sort((a, b) => a.game.localeCompare(b.game));
+    } else {
+      f.sort((a, b) => new Date(a.scheduled).getTime() - new Date(b.scheduled).getTime());
+    }
+    return f;
+  }, [filtered, sortKey]);
+
+  function toggleSort(key: SortKey) {
+    setSortKey(key);
+  }
 
   const statuses = useMemo(
     () => [...new Set(incentives.map((x) => x.status))],
@@ -103,7 +120,7 @@ function AdminIncentivesTable() {
           Show removed
         </label>
         <p className="text-sm text-muted self-center ml-auto">
-          {filtered.length} of {incentives.length}
+          {sorted.length} of {incentives.length}
         </p>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
@@ -127,7 +144,19 @@ function AdminIncentivesTable() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-muted text-left">
-                <th className="pb-2 pr-3 font-medium">Game</th>
+                <th
+                  className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
+                  onClick={() => toggleSort("time")}
+                >
+                  Time{sortKey === "time" ? " \u25B2" : ""}
+                </th>
+                <th className="pb-2 pr-3 font-medium">Stream</th>
+                <th
+                  className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
+                  onClick={() => toggleSort("game")}
+                >
+                  Game{sortKey === "game" ? " \u25B2" : ""}
+                </th>
                 <th className="pb-2 pr-3 font-medium">Incentive</th>
                 <th className="pb-2 pr-3 font-medium">Details</th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
@@ -138,8 +167,21 @@ function AdminIncentivesTable() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((x) => (
+              {sorted.map((x) => (
                 <tr key={x.uuid} className="border-b border-border/50 hover:bg-surface/80">
+                  <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">
+                    {new Date(x.scheduled).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      timeZone: "Europe/Stockholm",
+                    })}{" "}
+                    {new Date(x.scheduled).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "Europe/Stockholm",
+                    })}
+                  </td>
+                  <td className="py-2 pr-3 text-xs text-muted">{x.stream}</td>
                   <td className="py-2 pr-3">
                     <Link
                       href={`/run/${x.run_slug}`}

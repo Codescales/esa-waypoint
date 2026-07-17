@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { getRuns, getRunners, adminPatchRun, type Run, type RunPatch, type RunnerDTO } from "@/lib/api";
+
+type SortKey = "time" | "game";
 
 function EditableTextCell({
   value,
@@ -300,6 +302,7 @@ export default function AdminRunsPage() {
   const [runners, setRunners] = useState<RunnerDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("time");
 
   useEffect(() => {
     Promise.all([
@@ -327,14 +330,26 @@ export default function AdminRunsPage() {
       adminPatchRun(slug, { runner_slugs: slugs });
   }
 
-  const filtered = search
-    ? runs.filter(
-        (r) =>
-          r.game.toLowerCase().includes(search.toLowerCase()) ||
-          r.runner_display.toLowerCase().includes(search.toLowerCase()) ||
-          r.category.toLowerCase().includes(search.toLowerCase())
-      )
-    : runs;
+  const filtered = useMemo(() => {
+    let f = search
+      ? runs.filter(
+          (r) =>
+            r.game.toLowerCase().includes(search.toLowerCase()) ||
+            r.runner_display.toLowerCase().includes(search.toLowerCase()) ||
+            r.category.toLowerCase().includes(search.toLowerCase())
+        )
+      : runs;
+    if (sortKey === "game") {
+      f = [...f].sort((a, b) => a.game.localeCompare(b.game));
+    } else {
+      f = [...f].sort((a, b) => new Date(a.scheduled).getTime() - new Date(b.scheduled).getTime());
+    }
+    return f;
+  }, [runs, search, sortKey]);
+
+  function toggleSort(key: SortKey) {
+    setSortKey(key);
+  }
 
   return (
     <div>
@@ -358,7 +373,19 @@ export default function AdminRunsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-muted text-left">
-                <th className="pb-2 pr-3 font-medium">Game</th>
+                <th
+                  className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
+                  onClick={() => toggleSort("time")}
+                >
+                  Time{sortKey === "time" ? " \u25B2" : ""}
+                </th>
+                <th className="pb-2 pr-3 font-medium">Stream</th>
+                <th
+                  className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
+                  onClick={() => toggleSort("game")}
+                >
+                  Game{sortKey === "game" ? " \u25B2" : ""}
+                </th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
                 <th className="pb-2 pr-3 font-medium">Runners</th>
                 <th className="pb-2 pr-3 font-medium">Commentator</th>
@@ -370,6 +397,19 @@ export default function AdminRunsPage() {
             <tbody>
               {filtered.map((r) => (
                 <tr key={r.slug} className="border-b border-border/50 hover:bg-surface/80">
+                  <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">
+                    {new Date(r.scheduled).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      timeZone: "Europe/Stockholm",
+                    })}{" "}
+                    {new Date(r.scheduled).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "Europe/Stockholm",
+                    })}
+                  </td>
+                  <td className="py-2 pr-3 text-xs text-muted">{r.stream_short}</td>
                   <td className="py-2 pr-3">
                     <Link
                       href={`/run/${r.slug}`}

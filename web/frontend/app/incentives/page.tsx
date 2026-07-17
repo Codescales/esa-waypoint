@@ -106,7 +106,12 @@ export default function IncentivesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-muted text-left">
-                <th className="pb-2 pr-3 font-medium">Time</th>
+                <th
+                  className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
+                  onClick={() => toggleSort("time")}
+                >
+                  Time{sortKey === "time" ? " \u25B2" : ""}
+                </th>
                 <th className="pb-2 pr-3 font-medium">Stream</th>
                 <th
                   className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
