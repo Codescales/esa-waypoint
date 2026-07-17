@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended"
   ],
-  "schedule": ["every 2 weeks"],
+  "repositories": ["Codescales/esa-waypoint"],
+  "schedule": ["before 5am on Monday"],
   "timezone": "Europe/Stockholm",
   "labels": ["dependencies"],
   "packageRules": [
@@ -12,9 +13,10 @@
       "automerge": true
     }
   ],
-  "regexManagers": [
+  "customManagers": [
     {
-      "fileMatch": ["(^|/|\\.)(Dockerfile|Containerfile)$"],
+      "customType": "regex",
+      "managerFilePatterns": ["(^|/|\\.)(Dockerfile|Containerfile)$"],
       "matchStrings": [
         "apk add --no-cache (?<depName>\\S+)=(?<currentValue>\\S+)"
       ],
