@@ -16,7 +16,6 @@ export default function LoginPage() {
     setError("");
     try {
       await apiLogin(password);
-      sessionStorage.setItem("esa-auth", "1");
       router.push("/");
     } catch {
       setError("Invalid password");

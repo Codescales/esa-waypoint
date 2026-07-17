@@ -3,24 +3,34 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-function hasSession(): boolean {
-  return (
-    sessionStorage.getItem("esa-auth") === "1" ||
-    sessionStorage.getItem("esa_admin_authed") === "1"
-  );
+function getApiBase(): string {
+  if (typeof window === "undefined") return "";
+  return process.env.NEXT_PUBLIC_API_BASE || "";
+}
+
+async function checkSession(): Promise<boolean> {
+  try {
+    const res = await fetch(`${getApiBase()}/api/auth/status`, {
+      credentials: "include",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 export function useAuth() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!hasSession()) {
-      router.replace("/login");
-    }
+    checkSession().then((ok) => {
+      if (!ok) {
+        router.replace("/login");
+      }
+    });
   }, [router]);
 }
 
-export function isAuthenticated(): boolean {
-  if (typeof window === "undefined") return false;
-  return hasSession();
+export function isAuthenticated(): Promise<boolean> {
+  return checkSession();
 }

@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
 import { getStreams, getRuns, getBriefIndex, Run, BriefIndexResponse } from "@/lib/api";
 import RunCard from "@/components/RunCard";
 
 export default function MarathonPage() {
-  useAuth();
   const [streams, setStreams] = useState<string[]>([]);
   const [activeStream, setActiveStream] = useState("");
   const [runs, setRuns] = useState<Run[]>([]);

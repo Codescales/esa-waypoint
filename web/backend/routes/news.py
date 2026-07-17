@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from ..deps import get_repo, auth_required
+from ..deps import get_repo
 from ..models import NewsItemDTO
 from ..repo import IncentiveRepo
 
@@ -11,6 +11,5 @@ router = APIRouter(prefix="/api/news", tags=["news"])
 async def list_news(
     limit: int = Query(default=50, ge=1, le=200),
     repo: IncentiveRepo = Depends(get_repo),
-    _=auth_required,
 ):
     return repo.list_news(limit=limit)

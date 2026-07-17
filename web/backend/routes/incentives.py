@@ -4,7 +4,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 
 from .. import config
 from ..auth_admin import admin_cookie_name, current_admin, validate_admin_session
-from ..deps import get_repo, auth_required
+from ..deps import get_repo
 from ..models import IncentiveDTO, IncentivePatch, IncentiveCreateRequest
 from ..repo import IncentiveRepo
 from src import audit as audit_log
@@ -20,7 +20,6 @@ async def list_incentives(
     stream: str = Query(default=""),
     upcoming: bool = Query(default=False),
     repo: IncentiveRepo = Depends(get_repo),
-    _=auth_required,
 ):
     return repo.incentives(run_slug=run_slug, status=status, category=category, stream=stream, upcoming=upcoming)
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Response, HTTPException, Request
 from pydantic import BaseModel
 
 from .. import config
-from ..auth import verify_password, create_session, cookie_name
+from ..auth import verify_password, create_session, cookie_name, current_session_or_admin
 from ..limiter import limiter
 
 router = APIRouter(tags=["auth"])
@@ -37,3 +37,8 @@ async def login(request: Request, body: LoginRequest, response: Response):
 async def logout(response: Response):
     response.delete_cookie(key=cookie_name())
     return LoginResponse(ok=True)
+
+
+@router.get("/api/auth/status")
+async def auth_status(_=current_session_or_admin):
+    return {"ok": True}

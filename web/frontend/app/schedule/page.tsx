@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useState, useMemo } from "react";
-import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getRuns, getStreams, Run } from "@/lib/api";
@@ -9,7 +8,6 @@ import { getRuns, getStreams, Run } from "@/lib/api";
 type RunState = "upcoming" | "in_progress" | "completed" | "completed_faded";
 
 function SchedulePageInner() {
-  useAuth();
   const [runs, setRuns] = useState<Run[]>([]);
   const [streams, setStreams] = useState<string[]>([]);
   const [filterStream, setFilterStream] = useState("");

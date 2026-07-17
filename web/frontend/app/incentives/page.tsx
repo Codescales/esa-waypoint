@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useIncentives } from "@/lib/hooks";
 import { getStreams } from "@/lib/api";
@@ -9,7 +8,6 @@ import { getStreams } from "@/lib/api";
 type SortKey = "game" | "time";
 
 export default function IncentivesPage() {
-  useAuth();
   const { incentives, loading } = useIncentives({ upcoming: true });
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategory, setFilterCategory] = useState("");

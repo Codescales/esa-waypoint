@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from ..deps import get_repo, auth_required
+from ..deps import get_repo
 from ..repo import XlsxIncentiveRepo
 
 router = APIRouter(tags=["runs"])
@@ -17,7 +17,6 @@ async def list_runs(
     marathon: bool = Query(default=False),
     search: str = Query(default=""),
     repo: XlsxIncentiveRepo = Depends(get_repo),
-    _=auth_required,
 ):
     parsed_window = None
     if window:
