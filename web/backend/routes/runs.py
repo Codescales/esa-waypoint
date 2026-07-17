@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
-from ..deps import get_repo
+from ..deps import get_repo, auth_required
 from ..repo import XlsxIncentiveRepo
 
 router = APIRouter(tags=["runs"])
