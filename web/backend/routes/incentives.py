@@ -4,7 +4,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 
 from .. import config
 from ..auth_admin import admin_cookie_name, current_admin, validate_admin_session
-from ..deps import get_repo
+from ..deps import get_repo, auth_required
 from ..models import IncentiveDTO, IncentivePatch, IncentiveCreateRequest
 from ..repo import IncentiveRepo
 from src import audit as audit_log
