@@ -1,22 +1,43 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
 import { useIncentives } from "@/lib/hooks";
+import { getStreams } from "@/lib/api";
+
+type SortKey = "game" | "time";
 
 export default function IncentivesPage() {
   useAuth();
   const { incentives, loading } = useIncentives({ upcoming: true });
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterStream, setFilterStream] = useState("");
+  const [streams, setStreams] = useState<string[]>([]);
+  const [sortKey, setSortKey] = useState<SortKey>("time");
+
+  useEffect(() => {
+    getStreams().then(setStreams);
+  }, []);
 
   const filtered = useMemo(() => {
     let f = incentives.filter((x) => x.status !== "Removed");
     if (filterStatus) f = f.filter((x) => x.status === filterStatus);
     if (filterCategory) f = f.filter((x) => x.incentive_category === filterCategory);
+    if (filterStream) f = f.filter((x) => x.stream === filterStream);
     return f;
-  }, [incentives, filterStatus, filterCategory]);
+  }, [incentives, filterStatus, filterCategory, filterStream]);
+
+  const sorted = useMemo(() => {
+    const f = [...filtered];
+    if (sortKey === "game") {
+      f.sort((a, b) => a.game.localeCompare(b.game));
+    } else {
+      f.sort((a, b) => new Date(a.scheduled).getTime() - new Date(b.scheduled).getTime());
+    }
+    return f;
+  }, [filtered, sortKey]);
 
   const statuses = useMemo(
     () => [...new Set(incentives.map((x) => x.status))],
@@ -26,6 +47,10 @@ export default function IncentivesPage() {
     () => [...new Set(incentives.map((x) => x.incentive_category).filter(Boolean))],
     [incentives]
   );
+
+  function toggleSort(key: SortKey) {
+    setSortKey((prev) => (prev === key ? key : key));
+  }
 
   return (
     <div>
@@ -59,8 +84,18 @@ export default function IncentivesPage() {
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
+        <select
+          value={filterStream}
+          onChange={(e) => setFilterStream(e.target.value)}
+          className="input input-sm"
+        >
+          <option value="">All streams</option>
+          {streams.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
         <p className="text-sm text-muted self-center ml-auto">
-          {filtered.length} of {incentives.length}
+          {sorted.length} of {incentives.length}
         </p>
       </div>
 
@@ -71,7 +106,14 @@ export default function IncentivesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-muted text-left">
-                <th className="pb-2 pr-3 font-medium">Game</th>
+                <th className="pb-2 pr-3 font-medium">Time</th>
+                <th className="pb-2 pr-3 font-medium">Stream</th>
+                <th
+                  className="pb-2 pr-3 font-medium cursor-pointer hover:text-brand select-none"
+                  onClick={() => toggleSort("game")}
+                >
+                  Game{sortKey === "game" ? " \u25B2" : ""}
+                </th>
                 <th className="pb-2 pr-3 font-medium">Incentive</th>
                 <th className="pb-2 pr-3 font-medium">Details</th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
@@ -79,8 +121,21 @@ export default function IncentivesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((x) => (
+              {sorted.map((x) => (
                 <tr key={x.uuid} className="border-b border-border/50 hover:bg-surface/80">
+                  <td className="py-2 pr-3 font-mono text-xs whitespace-nowrap">
+                    {new Date(x.scheduled).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      timeZone: "Europe/Stockholm",
+                    })}{" "}
+                    {new Date(x.scheduled).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "Europe/Stockholm",
+                    })}
+                  </td>
+                  <td className="py-2 pr-3 text-xs text-muted">{x.stream}</td>
                   <td className="py-2 pr-3">
                     <Link
                       href={`/run/${x.run_slug}`}
