@@ -3,7 +3,6 @@
   "extends": [
     "config:recommended"
   ],
-  "repositories": ["Codescales/esa-waypoint"],
   "schedule": ["before 5am on Monday"],
   "timezone": "Europe/Stockholm",
   "labels": ["dependencies"],
