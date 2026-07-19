@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useIncentives } from "@/lib/hooks";
 import { getStreams } from "@/lib/api";
+import { STATUS_PILL } from "@/lib/incentiveConstants";
 
 type SortKey = "game" | "time";
 
@@ -120,6 +121,7 @@ export default function IncentivesPage() {
                 <th className="pb-2 pr-3 font-medium">Incentive</th>
                 <th className="pb-2 pr-3 font-medium">Details</th>
                 <th className="pb-2 pr-3 font-medium">Category</th>
+                <th className="pb-2 pr-3 font-medium">Status</th>
                 <th className="pb-2 font-medium">Est</th>
               </tr>
             </thead>
@@ -155,6 +157,11 @@ export default function IncentivesPage() {
                   </td>
                   <td className="py-2 pr-3">
                     <span className="pill pill-todo">{x.incentive_category || "—"}</span>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className={STATUS_PILL[x.status] || "pill pill-todo"}>
+                      {x.status || "—"}
+                    </span>
                   </td>
                   <td className="py-2">
                     <span className="text-xs text-muted">{x.incentive_estimate || "—"}</span>
