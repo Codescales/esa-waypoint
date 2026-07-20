@@ -17,11 +17,12 @@ from sqlmodel import Session, select
 
 from .models import (
     IncentiveDTO, IncentivePatch, IncentiveCreateRequest,
-    RunDTO, StaleInfo, RunnerDTO, RunnerProfileDTO, RunnerPBDTO, RunnerPBEntry,
+    RunDTO, RunCreateRequest, StaleInfo, RunnerDTO, RunnerProfileDTO, RunnerPBDTO, RunnerPBEntry,
     JobDTO, JobAlreadyRunningError, ParticipantDTO, NewsItemDTO,
 )
 from src.db import Incentive, Run, RunParticipant, Runner, Job, NewsItem, make_engine
-from src.slugs import runner_slug
+from src.slugs import runner_slug, run_slug as make_run_slug
+from src.import_to_sqlite import make_run_key
 from src import audit as audit_log
 
 TZ = ZoneInfo("Europe/Stockholm")
@@ -666,6 +667,111 @@ class SqliteIncentiveRepo:
             s.commit()
             s.refresh(run)
             return self._run_to_dto(run, s)
+
+    def create_run(self, body: RunCreateRequest) -> RunDTO:
+        """Manually create a run (admin-only).
+
+        Derives `slug` (ADR 0002 rule) and `run_key` (see
+        src.import_to_sqlite.make_run_key) server-side. Raises
+        HTTPException 409 if a run with the same run_key already
+        exists (mirrors the xlsx import's upsert identity).
+        """
+        from fastapi import HTTPException
+
+        scheduled = body.scheduled
+        if scheduled.tzinfo is not None:
+            scheduled = scheduled.astimezone(TZ).replace(tzinfo=None)
+
+        run_key = make_run_key(body.submission_id or "", body.game, body.category, scheduled)
+        slug = make_run_slug(body.game, body.category, scheduled.replace(tzinfo=TZ), body.submission_id or "")
+
+        with Session(self._engine()) as s:
+            existing = s.exec(select(Run).where(Run.run_key == run_key)).first()
+            if existing is not None:
+                raise HTTPException(status_code=409, detail="A run with this identity already exists")
+
+            now = datetime.now(TZ).replace(tzinfo=None)
+            run = Run(
+                pick=body.pick,
+                scheduled=scheduled,
+                game=body.game,
+                category=body.category,
+                estimate=body.estimate,
+                estimate_seconds=0,
+                platform=body.platform,
+                players=body.players,
+                note=body.note,
+                layout=body.layout,
+                stream=body.stream,
+                stream_short=body.stream_short,
+                submission_id=body.submission_id,
+                category_id=body.category_id,
+                incentives=body.incentives,
+                commentator=body.commentator,
+                upload_speed=body.upload_speed,
+                pronouns=body.pronouns,
+                show_cam=body.show_cam,
+                runner_comments=body.runner_comments,
+                slug=slug,
+                run_key=run_key,
+                imported_at=now,
+                updated_at=now,
+            )
+            s.add(run)
+            s.commit()
+            s.refresh(run)
+
+            for r_slug in body.runner_slugs:
+                runner = s.exec(select(Runner).where(Runner.slug == r_slug)).first()
+                rp = RunParticipant(
+                    run_id=run.id,
+                    runner_slug=r_slug,
+                    display_name=runner.display_name if runner else r_slug,
+                    twitch=runner.twitch if runner else "",
+                    discord=runner.discord if runner else "",
+                    twitter=runner.twitter if runner else "",
+                    pronouns=runner.pronouns if runner else "",
+                    pronunciation=runner.pronunciation if runner else "",
+                    imported_at=now,
+                    updated_at=now,
+                )
+                s.add(rp)
+            if body.runner_slugs:
+                s.commit()
+                s.refresh(run)
+
+            return self._run_to_dto(run, s)
+
+    def delete_run(self, slug: str) -> Optional[RunDTO]:
+        """Hard-delete a run and its participant rows (admin-only).
+
+        Refuses to delete (409) if the run still has incentives or
+        host notes attached, so historical incentive/note data is
+        never silently orphaned.
+        """
+        from fastapi import HTTPException
+        from src.db import Note
+
+        with Session(self._engine()) as s:
+            run = s.exec(select(Run).where(Run.slug == slug)).first()
+            if run is None:
+                return None
+
+            has_incentives = s.exec(select(Incentive).where(Incentive.run_id == run.id)).first()
+            if has_incentives is not None:
+                raise HTTPException(status_code=409, detail="Cannot delete a run with incentives; remove them first")
+            has_notes = s.exec(select(Note).where(Note.run_id == run.id)).first()
+            if has_notes is not None:
+                raise HTTPException(status_code=409, detail="Cannot delete a run with notes; remove them first")
+
+            dto = self._run_to_dto(run, s)
+
+            participants = s.exec(select(RunParticipant).where(RunParticipant.run_id == run.id)).all()
+            for rp in participants:
+                s.delete(rp)
+            s.delete(run)
+            s.commit()
+            return dto
 
     def cancel_job(self, id: str) -> Optional[JobDTO]:
         with Session(self._engine()) as s:

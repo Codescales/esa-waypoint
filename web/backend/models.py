@@ -223,6 +223,37 @@ class IncentiveCreateRequest(BaseModel):
     status: str = ""
 
 
+class RunCreateRequest(BaseModel):
+    """Fields required to manually create a new run (admin-only).
+
+    Runs are normally sourced from the schedule xlsx import; this
+    supports manual entry for testing, one-off events, or corrections.
+    `slug` and `run_key` are derived server-side (see src.slugs /
+    src.import_to_sqlite.make_run_key), not supplied by the caller.
+    """
+
+    pick: int = 0
+    scheduled: datetime
+    game: str
+    category: str
+    estimate: str = ""
+    platform: str = ""
+    players: str = ""
+    note: Optional[str] = None
+    layout: Optional[str] = None
+    stream: str = ""
+    stream_short: str = ""
+    submission_id: Optional[str] = None
+    category_id: Optional[str] = None
+    incentives: str = ""
+    commentator: str = ""
+    upload_speed: str = ""
+    pronouns: str = ""
+    show_cam: str = ""
+    runner_comments: str = ""
+    runner_slugs: list[str] = []
+
+
 class RunnerProfileDTO(BaseModel):
     """Composite runner profile with summary + detailed stats block.
 

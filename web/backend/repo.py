@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, Protocol
 
-from .models import RunDTO, IncentiveDTO, IncentivePatch, IncentiveCreateRequest, StaleInfo, RunnerDTO, JobDTO, RunnerProfileDTO, RunnerPBDTO, ParticipantDTO, NewsItemDTO
+from .models import RunDTO, IncentiveDTO, IncentivePatch, IncentiveCreateRequest, RunCreateRequest, StaleInfo, RunnerDTO, JobDTO, RunnerProfileDTO, RunnerPBDTO, ParticipantDTO, NewsItemDTO
 from src.slugs import runner_slug
 from src.db import parse_estimate_to_seconds
 
@@ -120,6 +120,10 @@ class IncentiveRepo(Protocol):
     def update_runner(self, slug: str, patch: dict) -> Optional[RunnerDTO]: ...
 
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]: ...
+
+    def create_run(self, body: RunCreateRequest) -> RunDTO: ...
+
+    def delete_run(self, slug: str) -> Optional[RunDTO]: ...
 
     def schedule_game_names(self) -> list[str]: ...
 
@@ -342,6 +346,12 @@ class XlsxIncentiveRepo:
 
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]:
         raise NotImplementedError("update_run requires REPO_TYPE=sqlite")
+
+    def create_run(self, body: RunCreateRequest) -> RunDTO:
+        raise NotImplementedError("create_run requires REPO_TYPE=sqlite")
+
+    def delete_run(self, slug: str) -> Optional[RunDTO]:
+        raise NotImplementedError("delete_run requires REPO_TYPE=sqlite")
 
     def schedule_game_names(self) -> list[str]:
         raise NotImplementedError("schedule_game_names requires REPO_TYPE=sqlite")

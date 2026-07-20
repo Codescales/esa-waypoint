@@ -163,3 +163,86 @@ class TestAdminPatchRun:
         slug = "super-mario-64__120-star__2026-07-11T1200"
         r = unauth_client.patch(f"/api/admin/runs/{slug}", json={"commentator": "x"})
         assert r.status_code == 401
+
+
+class TestAdminCreateRun:
+    def _payload(self, **overrides):
+        payload = {
+            "scheduled": "2026-07-20T10:00:00",
+            "game": "Test Game",
+            "category": "Any%",
+            "estimate": "1:00:00",
+            "stream": "stream1",
+            "stream_short": "stream1",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_create_run(self, client, admin_cookies):
+        r = client.post("/api/admin/runs", json=self._payload(), cookies=admin_cookies)
+        assert r.status_code == 201
+        data = r.json()
+        assert data["game"] == "Test Game"
+        assert data["category"] == "Any%"
+        assert data["slug"]
+
+    def test_create_run_with_runner_slugs(self, client, admin_cookies):
+        r = client.post(
+            "/api/admin/runs",
+            json=self._payload(game="Test Game 2", runner_slugs=["speedrunner1"]),
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 201
+        data = r.json()
+        assert len(data["participants"]) == 1
+        assert data["participants"][0]["slug"] == "speedrunner1"
+
+    def test_create_duplicate_run(self, client, admin_cookies):
+        payload = self._payload(game="Test Game 3")
+        client.post("/api/admin/runs", json=payload, cookies=admin_cookies)
+        r = client.post("/api/admin/runs", json=payload, cookies=admin_cookies)
+        assert r.status_code == 409
+
+    def test_create_unauthorized(self, unauth_client):
+        r = unauth_client.post("/api/admin/runs", json=self._payload())
+        assert r.status_code == 401
+
+
+class TestAdminDeleteRun:
+    def _create(self, client, admin_cookies, game="Deletable Game"):
+        r = client.post(
+            "/api/admin/runs",
+            json={
+                "scheduled": "2026-07-21T10:00:00",
+                "game": game,
+                "category": "Any%",
+                "estimate": "1:00:00",
+                "stream": "stream1",
+                "stream_short": "stream1",
+            },
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 201
+        return r.json()["slug"]
+
+    def test_delete_run(self, client, admin_cookies):
+        slug = self._create(client, admin_cookies)
+        r = client.delete(f"/api/admin/runs/{slug}", cookies=admin_cookies)
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+
+        r = client.get(f"/api/runs/{slug}", cookies=admin_cookies)
+        assert r.status_code == 404
+
+    def test_delete_run_not_found(self, client, admin_cookies):
+        r = client.delete("/api/admin/runs/nonexistent", cookies=admin_cookies)
+        assert r.status_code == 404
+
+    def test_delete_run_with_incentives_blocked(self, client, admin_cookies):
+        slug = "super-mario-64__120-star__2026-07-11T1200"
+        r = client.delete(f"/api/admin/runs/{slug}", cookies=admin_cookies)
+        assert r.status_code == 409
+
+    def test_delete_unauthorized(self, unauth_client):
+        r = unauth_client.delete("/api/admin/runs/some-slug")
+        assert r.status_code == 401

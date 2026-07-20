@@ -22,7 +22,7 @@ from ..auth_admin import (
 )
 from ..deps import get_briefs_dir, get_repo
 from ..limiter import limiter
-from ..models import JobDTO, JobAlreadyRunningError, RunnerDTO, RunDTO
+from ..models import JobDTO, JobAlreadyRunningError, RunnerDTO, RunDTO, RunCreateRequest
 from ..repo import IncentiveRepo
 from src import audit as audit_log
 from src.db import (
@@ -631,7 +631,19 @@ class RunnerPatchRequest(BaseModel):
 
 
 class RunPatchRequest(BaseModel):
+    game: Optional[str] = None
+    category: Optional[str] = None
+    estimate: Optional[str] = None
+    platform: Optional[str] = None
+    players: Optional[str] = None
+    note: Optional[str] = None
+    layout: Optional[str] = None
+    stream: Optional[str] = None
+    stream_short: Optional[str] = None
+    category_id: Optional[str] = None
+    incentives: Optional[str] = None
     commentator: Optional[str] = None
+    upload_speed: Optional[str] = None
     pronouns: Optional[str] = None
     show_cam: Optional[str] = None
     runner_comments: Optional[str] = None
@@ -668,3 +680,41 @@ async def admin_patch_run(
     if result is None:
         raise HTTPException(status_code=404, detail="Run not found")
     return result
+
+
+@router.post("/runs", response_model=RunDTO, status_code=201)
+async def admin_create_run(
+    body: RunCreateRequest,
+    _=Depends(current_admin),
+    repo: IncentiveRepo = Depends(get_repo),
+):
+    try:
+        run = repo.create_run(body)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    audit_log.write_audit(
+        os.path.dirname(config.DB_PATH),
+        "run_create",
+        f"slug={run.slug} game={run.game}",
+    )
+    return run
+
+
+@router.delete("/runs/{slug}")
+async def admin_delete_run(
+    slug: str,
+    _=Depends(current_admin),
+    repo: IncentiveRepo = Depends(get_repo),
+):
+    try:
+        run = repo.delete_run(slug)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    audit_log.write_audit(
+        os.path.dirname(config.DB_PATH),
+        "run_delete",
+        f"slug={slug}",
+    )
+    return {"ok": True, "slug": slug}
