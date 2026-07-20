@@ -2,7 +2,18 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
-import { getRuns, getRunners, adminPatchRun, type Run, type RunPatch, type RunnerDTO } from "@/lib/api";
+import {
+  getRuns,
+  getRunners,
+  getStreams,
+  adminPatchRun,
+  createRun,
+  deleteRun,
+  type Run,
+  type RunPatch,
+  type RunnerDTO,
+  type RunCreateRequest,
+} from "@/lib/api";
 
 type SortKey = "time" | "game";
 
@@ -300,24 +311,53 @@ function RunnerSelectorCell({
 export default function AdminRunsPage() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [runners, setRunners] = useState<RunnerDTO[]>([]);
+  const [streams, setStreams] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("time");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     Promise.all([
       getRuns({ marathon: true }),
       getRunners(),
+      getStreams(),
     ])
-      .then(([runsData, runnersData]) => {
+      .then(([runsData, runnersData, streamsData]) => {
         setRuns(runsData);
         setRunners(runnersData);
+        setStreams(streamsData);
       })
       .finally(() => setLoading(false));
   }, []);
 
   function updateRun(updated: Run) {
     setRuns((prev) => prev.map((r) => (r.slug === updated.slug ? updated : r)));
+  }
+
+  function addRun(created: Run) {
+    setRuns((prev) => [...prev, created]);
+  }
+
+  function removeRun(slug: string) {
+    setRuns((prev) => prev.filter((r) => r.slug !== slug));
+  }
+
+  async function handleCreate(body: RunCreateRequest) {
+    const created = await createRun(body);
+    addRun(created);
+    setShowAddForm(false);
+  }
+
+  async function handleDelete(slug: string) {
+    if (!window.confirm("Delete this run? This cannot be undone.")) return;
+    try {
+      await deleteRun(slug);
+      removeRun(slug);
+    } catch (e) {
+      console.error("Delete failed", e);
+      alert(String(e));
+    }
   }
 
   function patch(slug: string, field: keyof RunPatch) {
@@ -358,13 +398,29 @@ export default function AdminRunsPage() {
         <p className="text-sm text-muted">{filtered.length} of {runs.length}</p>
       </div>
 
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by game, runner, or category…"
-        className="input input-sm mb-4 w-full max-w-sm"
-      />
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by game, runner, or category…"
+          className="input input-sm w-full max-w-sm"
+        />
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="btn btn-sm ml-auto"
+        >
+          {showAddForm ? "cancel" : "new run"}
+        </button>
+      </div>
+
+      {showAddForm && (
+        <AddRunForm
+          streams={streams}
+          onSubmit={handleCreate}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
 
       {loading ? (
         <p className="text-muted text-sm">Loading...</p>
@@ -392,6 +448,7 @@ export default function AdminRunsPage() {
                 <th className="pb-2 pr-3 font-medium">Pronouns</th>
                 <th className="pb-2 pr-3 font-medium">Show Cam</th>
                 <th className="pb-2 pr-3 font-medium">Runner Comments</th>
+                <th className="pb-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -456,6 +513,15 @@ export default function AdminRunsPage() {
                       {r.runner_comments || <span className="text-muted/50">—</span>}
                     </span>
                   </EditableTextCell>
+                  <td className="py-2 pr-3">
+                    <button
+                      onClick={() => handleDelete(r.slug)}
+                      className="text-xs text-muted hover:text-remove transition-colors px-1"
+                      title="Delete run"
+                    >
+                      ×
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -463,5 +529,182 @@ export default function AdminRunsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function AddRunForm({
+  streams,
+  onSubmit,
+  onCancel,
+}: {
+  streams: string[];
+  onSubmit: (body: RunCreateRequest) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [scheduled, setScheduled] = useState("");
+  const [game, setGame] = useState("");
+  const [category, setCategory] = useState("");
+  const [estimate, setEstimate] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [players, setPlayers] = useState("");
+  const [stream, setStream] = useState(streams[0] || "");
+  const [streamShort, setStreamShort] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!scheduled || !game.trim() || !category.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onSubmit({
+        scheduled,
+        game: game.trim(),
+        category: category.trim(),
+        estimate: estimate || undefined,
+        platform: platform || undefined,
+        players: players || undefined,
+        stream: stream || undefined,
+        stream_short: streamShort || stream || undefined,
+      });
+      setGame("");
+      setCategory("");
+      setEstimate("");
+      setPlatform("");
+      setPlayers("");
+      setScheduled("");
+      setStreamShort("");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-4 p-4 card space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Scheduled *
+          </label>
+          <input
+            type="datetime-local"
+            value={scheduled}
+            onChange={(e) => setScheduled(e.target.value)}
+            required
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Game *
+          </label>
+          <input
+            type="text"
+            value={game}
+            onChange={(e) => setGame(e.target.value)}
+            required
+            placeholder="Super Mario 64"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Category *
+          </label>
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            required
+            placeholder="120 Star"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Estimate
+          </label>
+          <input
+            type="text"
+            value={estimate}
+            onChange={(e) => setEstimate(e.target.value)}
+            placeholder="1:30:00"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Platform
+          </label>
+          <input
+            type="text"
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            placeholder="N64"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Players
+          </label>
+          <input
+            type="text"
+            value={players}
+            onChange={(e) => setPlayers(e.target.value)}
+            placeholder="1"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Stream
+          </label>
+          <select
+            value={stream}
+            onChange={(e) => setStream(e.target.value)}
+            className="input input-sm"
+          >
+            <option value="">—</option>
+            {streams.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Stream short
+          </label>
+          <input
+            type="text"
+            value={streamShort}
+            onChange={(e) => setStreamShort(e.target.value)}
+            placeholder="stream1"
+            className="input input-sm"
+          />
+        </div>
+      </div>
+      {error && <p className="text-xs text-remove">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={!scheduled || !game.trim() || !category.trim() || saving}
+          className="btn btn-sm"
+        >
+          {saving ? "adding…" : "add run"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="btn btn-sm btn-b2"
+        >
+          cancel
+        </button>
+      </div>
+    </form>
   );
 }

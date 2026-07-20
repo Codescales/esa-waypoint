@@ -185,7 +185,6 @@ export interface BriefSidecar {
   runner_section: Record<string, unknown> | null;
   category_section: BriefSidecarCategoryInfo | null;
   game_section: Record<string, unknown> | null;
-  interview_material: string;
   siblings: BriefSidecarSibling[];
   sources: BriefSidecarSource[];
   confidence_flags: string[];
@@ -443,6 +442,42 @@ export function adminPatchRun(slug: string, patch: RunPatch): Promise<Run> {
   return fetchAdmin(`/api/admin/runs/${encodeURIComponent(slug)}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
+  });
+}
+
+export interface RunCreateRequest {
+  pick?: number;
+  scheduled: string;
+  game: string;
+  category: string;
+  estimate?: string;
+  platform?: string;
+  players?: string;
+  note?: string;
+  layout?: string;
+  stream?: string;
+  stream_short?: string;
+  submission_id?: string;
+  category_id?: string;
+  incentives?: string;
+  commentator?: string;
+  upload_speed?: string;
+  pronouns?: string;
+  show_cam?: string;
+  runner_comments?: string;
+  runner_slugs?: string[];
+}
+
+export function createRun(body: RunCreateRequest): Promise<Run> {
+  return fetchAdmin("/api/admin/runs", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteRun(slug: string): Promise<{ ok: boolean; slug: string }> {
+  return fetchAdmin(`/api/admin/runs/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
   });
 }
 
