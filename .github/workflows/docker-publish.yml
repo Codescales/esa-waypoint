@@ -9,7 +9,7 @@ env:
   IMAGE_PREFIX: ghcr.io/codescales/esa-waypoint
 
 jobs:
-  build-and-push:
+  build-amd64:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -18,9 +18,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -37,7 +34,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.backend
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/backend:latest
           cache-from: type=gha
@@ -57,7 +54,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.frontend
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
           cache-from: type=gha
@@ -77,7 +74,7 @@ jobs:
         with:
           context: .
           file: Dockerfile.backup
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/backup:latest
           cache-from: type=gha
@@ -91,3 +88,56 @@ jobs:
           exit-code: 1
           severity: CRITICAL
           trivyignores: .trivyignore
+
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.backend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.frontend
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push backup
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.backup
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/backup:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
