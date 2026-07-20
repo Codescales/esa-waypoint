@@ -2,10 +2,12 @@ import fs from "fs";
 import path from "path";
 import Link from "next/link";
 
-interface AssetFile {
+interface TreeNode {
   name: string;
+  relPath: string;
   size: string;
   isDir: boolean;
+  children: TreeNode[];
 }
 
 function formatSize(bytes: number): string {
@@ -15,71 +17,91 @@ function formatSize(bytes: number): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+function buildTree(dir: string, prefix: string = ""): TreeNode[] {
+  const nodes: TreeNode[] = [];
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.name === ".gitkeep") continue;
+      const fullPath = path.join(dir, e.name);
+      const relPath = prefix ? `${prefix}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        nodes.push({
+          name: e.name,
+          relPath,
+          size: "-",
+          isDir: true,
+          children: buildTree(fullPath, relPath),
+        });
+      } else {
+        const stat = fs.statSync(fullPath);
+        nodes.push({
+          name: e.name,
+          relPath,
+          size: formatSize(stat.size),
+          isDir: false,
+          children: [],
+        });
+      }
+    }
+  } catch {
+    // skip
+  }
+  nodes.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  return nodes;
+}
+
+function TreeView({ nodes, depth }: { nodes: TreeNode[]; depth: number }) {
+  return (
+    <ul className="list-none m-0 p-0">
+      {nodes.map((n) => (
+        <li key={n.relPath}>
+          <div
+            className="flex items-center gap-2 py-0.5 text-sm"
+            style={{ paddingLeft: `${depth * 1.25}rem` }}
+          >
+            <span className="text-muted w-4 shrink-0">
+              {n.isDir ? "📁" : "📄"}
+            </span>
+            {n.isDir ? (
+              <span className="font-medium text-muted">{n.name}/</span>
+            ) : (
+              <Link
+                href={`/assets/${n.relPath}`}
+                target="_blank"
+                className="hover:text-brand transition-colors"
+              >
+                {n.name}
+              </Link>
+            )}
+            <span className="text-muted/60 font-mono text-xs ml-auto tabular-nums">
+              {n.size}
+            </span>
+          </div>
+          {n.isDir && n.children.length > 0 && (
+            <TreeView nodes={n.children} depth={depth + 1} />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function AssetsPage() {
   const assetsDir = path.join(process.cwd(), "public", "assets");
-  let files: AssetFile[] = [];
-
-  try {
-    const entries = fs.readdirSync(assetsDir, { withFileTypes: true });
-    files = entries
-      .filter((e) => e.name !== ".gitkeep")
-      .map((e) => {
-        const fullPath = path.join(assetsDir, e.name);
-        const stat = fs.statSync(fullPath);
-        return {
-          name: e.name,
-          size: e.isDirectory() ? "-" : formatSize(stat.size),
-          isDir: e.isDirectory(),
-        };
-      })
-      .sort((a, b) => {
-        if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      });
-  } catch {
-    // assets dir doesn't exist or can't be read
-  }
+  const tree = buildTree(assetsDir);
 
   return (
     <div>
       <h1 className="text-xl font-bold mb-4">Assets</h1>
-      {files.length === 0 ? (
+      {tree.length === 0 ? (
         <p className="text-muted text-sm">No assets found.</p>
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-muted text-left">
-                <th className="p-3 font-medium">Name</th>
-                <th className="p-3 font-medium w-24 text-right">Size</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((f) => (
-                <tr
-                  key={f.name}
-                  className="border-b border-border/50 last:border-0 hover:bg-surface/80"
-                >
-                  <td className="p-3">
-                    {f.isDir ? (
-                      <span className="text-muted">{f.name}/</span>
-                    ) : (
-                      <Link
-                        href={`/assets/${f.name}`}
-                        className="hover:text-brand transition-colors"
-                        target="_blank"
-                      >
-                        {f.name}
-                      </Link>
-                    )}
-                  </td>
-                  <td className="p-3 text-right text-muted font-mono text-xs">
-                    {f.size}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card p-3">
+          <TreeView nodes={tree} depth={0} />
         </div>
       )}
     </div>
