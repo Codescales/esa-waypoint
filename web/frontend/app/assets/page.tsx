@@ -90,6 +90,8 @@ function TreeView({ nodes, depth }: { nodes: TreeNode[]; depth: number }) {
   );
 }
 
+export const dynamic = "force-dynamic";
+
 export default function AssetsPage() {
   const assetsDir = path.join(process.cwd(), "public", "assets");
   const tree = buildTree(assetsDir);
