@@ -46,6 +46,7 @@ export default function Nav() {
     { href: "/", label: "Marathon", exact: true },
     { href: "/schedule", label: "Schedule", exact: true },
     { href: "/incentives", label: "Incentives", exact: true },
+    { href: "/assets", label: "Assets", exact: true },
     { href: "/admin", label: "Admin", exact: false },
   ];
 
