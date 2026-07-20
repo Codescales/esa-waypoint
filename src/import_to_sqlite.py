@@ -40,6 +40,7 @@ from src.db import (
     parse_estimate_to_seconds,
     quick_check,
 )
+from src import snapshot as snap
 from src import xlsx_reader as xr
 from src.slugs import run_slug, runner_slug, stream_token
 
@@ -113,14 +114,9 @@ def import_xlsx_to_sqlite(
     # Snapshot existing DB before writing
     snapshot_path = None
     if os.path.exists(db_path):
-        os.makedirs(os.path.join(os.path.dirname(db_path), "snapshots"), exist_ok=True)
-        ts = now.strftime("%Y%m%dT%H%M%S")
-        snapshot_path = os.path.join(
-            os.path.dirname(db_path), "snapshots", f"esa.db.{ts}"
-        )
-        shutil.copy2(db_path, snapshot_path)
-        os.replace(snapshot_path, snapshot_path + ".stamping")
-        os.replace(snapshot_path + ".stamping", snapshot_path)
+        schema_v = get_schema_version(db_path)
+        info = snap.create_snapshot(db_path, schema_v, reason="pre-import", keep=snap.SNAPSHOT_KEEP)
+        snapshot_path = info.path
 
     # Init temp DB
     if os.path.exists(temp_path):

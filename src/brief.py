@@ -1524,7 +1524,6 @@ def research_runner(
 def generate_briefs_llm(
     db_path: str = "",
     briefs_dir: str = "",
-    mode: str = "scan",
     max_concurrency: int = 0,
     refresh_runners: bool = False,
     slugs: list[str] | None = None,
@@ -1543,7 +1542,6 @@ def generate_briefs_llm(
     Args:
         db_path: Path to the SQLite DB (default: DB_PATH env or output/esa.db).
         briefs_dir: Output directory for brief files (default: BRIEFS_DIR env or output/briefs).
-        mode: "scan" | "interview" | "full" (default: "scan").
         max_concurrency: Max parallel LLM calls (default: LLM_MAX_CONCURRENCY env or 4).
         refresh_runners: If True, refresh runner profiles from SRC before
             generating briefs (scoped to matched runners when slugs/runner_twitches
@@ -1582,7 +1580,7 @@ def generate_briefs_llm(
     output_dir = os.path.dirname(db_path)
     if os.path.exists(db_path):
         schema_v = get_schema_version(db_path)
-        snap.create_snapshot(db_path, schema_v, reason="pre-brief-llm")
+        snap.create_snapshot(db_path, schema_v, reason="pre-brief-llm", keep=snap.SNAPSHOT_KEEP)
         audit_log.write_audit(output_dir, "generate_briefs_llm", "snapshot created pre-brief-llm")
 
     if os.path.isdir(briefs_dir):
@@ -1670,7 +1668,6 @@ def generate_briefs_llm(
             # LLM prose (falls back to deterministic md if LLM_DISABLED)
             # Runner history is NOT passed — it belongs on the runner page.
             user_prompt = bp.build_user_prompt(
-                mode=mode,
                 run_meta=json_data.get("run_meta", {}),
                 sidecar=json_data,
             )
@@ -1680,25 +1677,13 @@ def generate_briefs_llm(
                 disabled_fallback=md_fallback,
             )
 
-            json_data["mode"] = mode
-
-            # Split off interview material if the sentinel is present.
-            # interview + full modes include <!-- INTERVIEW_MATERIAL --> followed by
-            # talking points and runner questions. Split into prose-only .md and store
-            # the rest as interview_material in the sidecar.
-            sentinel = bp.INTERVIEW_MATERIAL_SENTINEL
-            if sentinel in prose:
-                prose_part, interview_part = prose.split(sentinel, 1)
-                json_data["interview_material"] = interview_part.strip()
-            else:
-                prose_part = prose
-                json_data["interview_material"] = ""
+            json_data["mode"] = "standard"
 
             md_path = os.path.join(briefs_dir, f"{slug}.md")
             json_path = os.path.join(briefs_dir, f"{slug}.json")
 
             with open(md_path, "w") as f:
-                f.write(prose_part.strip() + "\n")
+                f.write(prose.strip() + "\n")
             with open(json_path, "w") as f:
                 json.dump(json_data, f, indent=2)
 
@@ -1736,7 +1721,6 @@ def cmd_generate_llm(args) -> None:
     result = generate_briefs_llm(
         db_path=getattr(args, "db_path", "") or os.environ.get("DB_PATH", "output/esa.db"),
         briefs_dir=getattr(args, "briefs_dir", "") or os.environ.get("BRIEFS_DIR", BRIEFS_DIR),
-        mode=getattr(args, "mode", "scan"),
         max_concurrency=getattr(args, "max_concurrency", 0),
         refresh_runners=getattr(args, "refresh_runners", False),
         slugs=slugs,
@@ -1860,10 +1844,6 @@ def main() -> None:
     p_gl = sub.add_parser(
         "generate-llm",
         help="Regenerate all briefs using an LLM (DB source, force overwrite)",
-    )
-    p_gl.add_argument(
-        "--mode", default="scan", choices=["scan", "interview", "full"],
-        help="Brief depth: scan (default), interview, or full",
     )
     p_gl.add_argument(
         "--db-path", default=os.getenv("DB_PATH", "output/esa.db"),

@@ -12,6 +12,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("Europe/Stockholm")
+SNAPSHOT_KEEP = int(os.environ.get("SNAPSHOT_KEEP", "10"))
 
 
 @dataclass
@@ -28,10 +29,11 @@ def snapshots_dir(db_path: str) -> str:
     return os.path.join(os.path.dirname(db_path), "snapshots")
 
 
-def create_snapshot(db_path: str, schema_version: int, reason: str = "manual") -> SnapshotInfo:
+def create_snapshot(db_path: str, schema_version: int, reason: str = "manual", keep: int | None = None) -> SnapshotInfo:
     """Copy the live DB to a timestamped snapshot file.
 
     Returns the snapshot info. The snapshots dir is created if missing.
+    If *keep* is set, prunes to that many snapshots after creation.
     Caller is responsible for logging to the audit log.
     """
     if not os.path.exists(db_path):
@@ -46,13 +48,18 @@ def create_snapshot(db_path: str, schema_version: int, reason: str = "manual") -
     shutil.copy2(db_path, snap_path)
     size = os.path.getsize(snap_path)
 
-    return SnapshotInfo(
+    info = SnapshotInfo(
         id=ts,
         path=snap_path,
         size_bytes=size,
         age_hours=0.0,
         schema_version=schema_version,
     )
+
+    if keep is not None:
+        prune_snapshots(db_path, keep=keep)
+
+    return info
 
 
 def list_snapshots(db_path: str) -> list[SnapshotInfo]:
