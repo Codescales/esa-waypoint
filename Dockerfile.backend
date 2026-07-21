@@ -1,4 +1,4 @@
-FROM python:3.12-alpine AS builder
+FROM python:3.14-alpine AS builder
 
 RUN pip install uv==0.11.28 --no-cache-dir
 
@@ -10,7 +10,7 @@ COPY src/ src/
 COPY web/backend/ web/backend/
 RUN uv sync --frozen --no-dev --no-cache
 
-FROM python:3.12-alpine
+FROM python:3.14-alpine
 
 RUN apk add --no-cache ca-certificates=20260611-r0 && \
     addgroup -S -g 1001 app && adduser -S -u 1001 -G app app && \
