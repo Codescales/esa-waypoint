@@ -18,3 +18,7 @@ CVE-2026-8376
 # perl: silently incorrect regular expression results
 # perl-base in Debian slim; not exploitable in our container
 CVE-2026-13221
+
+# tar (node-tar): Denial of Service via crafted gzip bomb
+# Bundled with npm in node:22-alpine base image; not exploitable in our Next.js container
+CVE-2026-59873
