@@ -119,7 +119,7 @@ jobs:
           file: Dockerfile.backend
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}/backend:latest
+          tags: ${{ env.IMAGE_PREFIX }}/backend:latest-arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -130,7 +130,7 @@ jobs:
           file: Dockerfile.frontend
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
+          tags: ${{ env.IMAGE_PREFIX }}/frontend:latest-arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -141,6 +141,6 @@ jobs:
           file: Dockerfile.backup
           platforms: linux/arm64
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}/backup:latest
+          tags: ${{ env.IMAGE_PREFIX }}/backup:latest-arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
