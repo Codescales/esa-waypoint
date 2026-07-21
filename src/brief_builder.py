@@ -25,9 +25,12 @@ from . import xlsx_reader as xr
 from .slugs import run_slug
 from .src_api import (
     SrcApiError,
+    fetch_category_leaderboard,
     fetch_category_wr,
     fetch_game_records,
     fetch_src_categories,
+    fetch_wikipedia_summary,
+    gather_trivia_candidates,
     search_src_game,
     search_user_by_lookup,
 )
@@ -82,17 +85,18 @@ def build_brief(
     json_data: dict[str, Any] = {
         "slug": "",
         "scheduled": run_row.scheduled.isoformat() if run_row.scheduled else "",
-        "mode": "scan",
+        "mode": "standard",
         "run_meta": _build_run_meta(run_row),
         "incentives": _build_incentives(run_row, spreadsheet_path, incentives=incentives),
         "runner_section": None,
         "category_section": None,
         "game_section": None,
-        "interview_material": [],
         "siblings": [],
         "sources": [],
         "confidence_flags": [],
         "errors": [],
+        "trivia_candidates": [],
+        "forum_highlights": [],
     }
 
     slug = run_slug(
@@ -259,12 +263,33 @@ def _add_game_and_category_info(
             json_data["category_section"] = {
                 "name": category_name,
                 "records": normalized,
+                "runner_count": len({r.get("runner") for r in normalized if r.get("runner")}),
             }
             wr = normalized[0] if normalized else None
             if wr:
                 md_parts.append(f"**WR:** {wr.get('runner', '?')} — {wr.get('time', '?')} ({wr.get('date', '?')})  \n")
     except SrcApiError:
         json_data["confidence_flags"].append("Could not fetch SRC records")
+
+    # Fetch the full leaderboard for the matched category to get an accurate
+    # runner count. The /records endpoint with top=1 only returns the WR holder.
+    if matching_cat and "runner_count" in (json_data.get("category_section") or {}):
+        try:
+            leaderboard = fetch_category_leaderboard(game_id, matching_cat["id"], top=200)
+            if leaderboard:
+                unique_runners = {e.get("runner_id") for e in leaderboard if e.get("runner_id")}
+                json_data["category_section"]["runner_count"] = len(unique_runners)
+        except SrcApiError:
+            pass  # Keep the fallback count from the records response
+
+    # Gather trivia candidates from Wikipedia for the LLM to validate.
+    try:
+        json_data["trivia_candidates"] = gather_trivia_candidates(game_name, max_results=3)
+    except Exception:
+        json_data["trivia_candidates"] = []
+
+    # forum_highlights is always empty — SRC has no public forum API.
+    json_data["forum_highlights"] = []
 
 
 def _add_runner_info(

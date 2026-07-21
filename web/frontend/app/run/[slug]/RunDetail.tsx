@@ -318,31 +318,6 @@ export default function RunDetail({ run, brief }: Props) {
               </section>
             </>
           )}
-
-          {/* Interview material (collapsed) */}
-          {sidecar.interview_material && (
-            <>
-              <SectionDivider />
-              <section>
-                <details className="group">
-                  <summary className="cursor-pointer list-none flex items-center gap-2 select-none">
-                    <SectionHeading>
-                      <span className="inline-flex items-center gap-2">
-                        Interview Material
-                        <span className="text-xs font-normal text-muted normal-case tracking-normal">
-                          (talking points &amp; questions for the runner)
-                        </span>
-                      </span>
-                    </SectionHeading>
-                    <span className="text-muted text-sm ml-auto group-open:rotate-180 transition-transform">▾</span>
-                  </summary>
-                  <div className="mt-4 prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-bold prose-h3:text-sm prose-h3:mt-6 prose-h3:mb-2 prose-p:text-muted prose-p:leading-relaxed prose-li:text-muted prose-li:leading-relaxed">
-                    <Markdown remarkPlugins={[remarkGfm]}>{sidecar.interview_material}</Markdown>
-                  </div>
-                </details>
-              </section>
-            </>
-          )}
         </>
       )}
 

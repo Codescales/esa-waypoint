@@ -206,6 +206,63 @@ def fetch_game_records(game_id: str) -> list[dict]:
     return records
 
 
+def fetch_category_leaderboard(game_id: str, category_id: str, top: int = 200) -> list[dict]:
+    """Fetch the full leaderboard for a single category.
+
+    Returns list of {runner_id, runner_name, time_seconds, date} for every run
+    on the leaderboard, up to `top` entries. Used to count unique runners in
+    a category (the /records?top=1 endpoint only returns the WR).
+
+    Falls back to the embedded players resolution like fetch_game_records.
+    """
+    key = f"/leaderboards/{game_id}/{category_id}?top={top}"
+    if key in _cache:
+        return _cache[key]  # type: ignore[return-value]
+
+    resp = src_get(f"/leaderboards/{game_id}/category/{category_id}?top={top}&embed=players")
+    if not resp or not resp.get("data"):
+        _cache[key] = []
+        return []
+
+    runs_data = resp["data"].get("runs", [])
+    if not runs_data:
+        _cache[key] = []
+        return []
+
+    user_cache: dict[str, str] = {}
+
+    def _resolve_runner_name(uid: str) -> str:
+        if uid in user_cache:
+            return user_cache[uid]
+        try:
+            user = src_get(f"/users/{uid}")
+            if user and user.get("data"):
+                name = (user.get("data", {}).get("names", {}) or {}).get("international", "")
+                user_cache[uid] = name
+                return name
+        except Exception:
+            pass
+        user_cache[uid] = ""
+        return ""
+
+    entries: list[dict] = []
+    for entry in runs_data:
+        run = entry.get("run", {})
+        players = run.get("players", [])
+        runner_id = players[0].get("id", "") if players else ""
+        runner_name = _resolve_runner_name(runner_id) if runner_id else ""
+        entries.append({
+            "runner_id": runner_id,
+            "runner_name": runner_name,
+            "time_seconds": run.get("times", {}).get("primary_t"),
+            "date": run.get("date", ""),
+            "place": entry.get("place"),
+        })
+
+    _cache[key] = entries
+    return entries
+
+
 def search_user_by_lookup(handle: str) -> dict | None:
     """Search speedrun.com for a user by name or Twitch handle.
 
@@ -282,3 +339,71 @@ def fetch_user_personal_bests(user_id: str, max_count: int = 200) -> list[dict]:
 
     _cache[key] = pbs
     return pbs
+
+
+# ── Wikipedia trivia helpers ─────────────────────────────────────────────────
+# Lightweight fetchers used by brief_builder.py to produce trivia candidates
+# that the LLM validates before including in the "Trivia & Interesting Facts"
+# section of the brief. The LLM is responsible for filtering; this code only
+# provides raw material.
+
+WIKI_API = "https://en.wikipedia.org/api/rest_v1/page/summary"
+WIKI_HEADERS = {"User-Agent": "esa-brief-skill/0.1 (ESA Summer 2026; host briefing tool)"}
+
+_wiki_cache: dict[str, str | None] = {}
+
+
+def _wiki_slug(game_name: str) -> str:
+    """Convert a game name to a likely Wikipedia slug.
+
+    Strips common suffixes like "(Recompiled)", ":", replaces spaces with
+    underscores. The LLM (and downstream call) can re-search if the slug
+    doesn't resolve.
+    """
+    s = game_name.strip()
+    # Strip parentheticals like "(Recompiled)", "(HD)"
+    import re as _re
+    s = _re.sub(r"\s*\([^)]*\)\s*", " ", s).strip()
+    s = s.replace(" ", "_")
+    return s
+
+
+def fetch_wikipedia_summary(game_name: str) -> str | None:
+    """Fetch the Wikipedia summary extract for a game.
+
+    Returns the plain-text extract (up to ~500 chars) or None if not found.
+    Cached per-process. Used by gather_trivia_candidates() to produce raw
+    material the LLM validates.
+    """
+    slug = _wiki_slug(game_name)
+    if slug in _wiki_cache:
+        return _wiki_cache[slug]
+    try:
+        req = urllib.request.Request(f"{WIKI_API}/{slug}", headers=WIKI_HEADERS)
+        with urllib.request.urlopen(req, timeout=10) as resp:  # nosec B310
+            data = json.loads(resp.read().decode("utf-8"))
+        extract = data.get("extract") or ""
+        if not extract:
+            _wiki_cache[slug] = None
+            return None
+        # Trim to keep prompts small.
+        if len(extract) > 600:
+            extract = extract[:597] + "..."
+        _wiki_cache[slug] = extract
+        return extract
+    except Exception:
+        _wiki_cache[slug] = None
+        return None
+
+
+def gather_trivia_candidates(game_name: str, max_results: int = 3) -> list[str]:
+    """Return a list of trivia candidate strings for the given game.
+
+    Currently a single Wikipedia summary extract. Returns [] if no summary
+    is found. The LLM is responsible for validating before including in
+    the brief.
+    """
+    summary = fetch_wikipedia_summary(game_name)
+    if not summary:
+        return []
+    return [summary]

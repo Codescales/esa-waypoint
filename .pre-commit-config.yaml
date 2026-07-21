@@ -28,7 +28,7 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [manual]
+        stages: [pre-commit, manual]
 
       - id: uv-lock
         name: uv lock (sync lockfile with pyproject.toml)
@@ -55,10 +55,31 @@ repos:
         language: system
         files: ^Dockerfile\.backup$
 
+      - id: frontend-tsc
+        name: frontend typecheck (tsc --noEmit)
+        entry: bash -c 'cd web/frontend && npx tsc --noEmit'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: backend-ruff
+        name: backend lint (ruff)
+        entry: uv tool run ruff check src/ web/backend/
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: backend-pyrefly
+        name: backend typecheck (pyrefly)
+        entry: uv tool run pyrefly src/ web/backend/
+        language: system
+        pass_filenames: false
+        always_run: true
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.2
     hooks:
       - id: gitleaks
         name: gitleaks (secret scanning)
         args: [--verbose]
-        stages: [manual]
+        stages: [pre-commit, manual]
