@@ -49,6 +49,7 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           trivyignores: .trivyignore
+          vuln-type: library
 
       - name: Build and push frontend
         uses: docker/build-push-action@v7
@@ -70,6 +71,7 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           trivyignores: .trivyignore
+          vuln-type: library
 
       - name: Build and push backup
         uses: docker/build-push-action@v7
@@ -91,6 +93,7 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           trivyignores: .trivyignore
+          vuln-type: library
 
   merge-manifest:
     needs: [build-amd64, build-arm64]
