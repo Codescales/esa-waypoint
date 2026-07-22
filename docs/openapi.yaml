@@ -233,6 +233,14 @@ paths:
           type: string
           default: ''
           title: Stream
+      - name: upcoming
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Upcoming
+        description: When true, only return incentives for runs that have not yet started.
       responses:
         '200':
           description: Successful Response
@@ -1352,6 +1360,11 @@ components:
         incentive_text:
           type: string
           title: Incentive Text
+        details:
+          type: string
+          title: Details
+          default: ''
+          description: Additional context or notes for the incentive.
         incentive_category:
           type: string
           title: Incentive Category
@@ -1380,6 +1393,11 @@ components:
           type: string
           format: date-time
           title: Scheduled
+        scheduled_date:
+          type: string
+          title: Scheduled Date
+          default: ''
+          description: 'YYYY-MM-DD in Europe/Stockholm time zone'
         game:
           type: string
           title: Game
@@ -1405,6 +1423,11 @@ components:
         incentive_text:
           type: string
           title: Incentive Text
+        details:
+          type: string
+          title: Details
+          default: ''
+          description: Additional context or notes for the incentive.
         incentive_category:
           type: string
           title: Incentive Category
@@ -1456,6 +1479,16 @@ components:
       title: IncentiveDTO
     IncentivePatch:
       properties:
+        incentive_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incentive Text
+        details:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Details
         incentive_category:
           anyOf:
           - type: string

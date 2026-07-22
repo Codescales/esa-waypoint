@@ -178,7 +178,12 @@ class SqliteIncentiveRepo:
             from zoneinfo import ZoneInfo
             scheduled = scheduled.replace(tzinfo=ZoneInfo("Europe/Stockholm"))
 
-        # Parse participants from JSON blob
+        # Parse participants from JSON blob.
+        # Two formats exist in the wild:
+        #   - import format: {"display": ..., "twitch": ..., "discord": ..., "twitter": ...}
+        #   - DTO format (written by create_incentive before this fix):
+        #     {"slug": ..., "display_name": ..., "twitch": ..., ...}
+        # Handle both so existing rows are not broken.
         participants: list[ParticipantDTO] = []
         if inc.participants_json:
             try:
@@ -186,11 +191,17 @@ class SqliteIncentiveRepo:
                 if isinstance(raw, list):
                     participants = [
                         ParticipantDTO(
-                            slug=p.get("twitch", "").strip().lower() or p.get("display", ""),
-                            display_name=p.get("display", ""),
+                            slug=(
+                                p.get("slug", "")
+                                or p.get("twitch", "").strip().lower()
+                                or p.get("display", "")
+                                or p.get("display_name", "")
+                            ),
+                            display_name=p.get("display_name", "") or p.get("display", ""),
                             twitch=p.get("twitch", ""),
                             discord=p.get("discord", ""),
                             twitter=p.get("twitter", ""),
+                            pronouns=p.get("pronouns", ""),
                             pronunciation=p.get("pronunciation", ""),
                             submission_id=p.get("submission_id"),
                             match_confidence=p.get("match_confidence", ""),
@@ -311,10 +322,25 @@ class SqliteIncentiveRepo:
                 from fastapi import HTTPException
                 raise HTTPException(status_code=404, detail="Run not found")
 
-            # Snapshot current participants for the incentive
+            # Snapshot current participants for the incentive.
+            # Use the raw import format (display/twitch keys) so _incentive_to_dto
+            # can parse them the same way as xlsx-imported rows.
             participants = self._participants_for_run(run.id or 0, s)
             participants_json = json.dumps(
-                [p.model_dump() for p in participants], ensure_ascii=False
+                [
+                    {
+                        "display": p.display_name,
+                        "twitch": p.twitch,
+                        "discord": p.discord,
+                        "twitter": p.twitter,
+                        "pronouns": p.pronouns,
+                        "pronunciation": p.pronunciation,
+                        "submission_id": p.submission_id,
+                        "match_confidence": p.match_confidence,
+                    }
+                    for p in participants
+                ],
+                ensure_ascii=False,
             )
 
             now = datetime.now(TZ).replace(tzinfo=None)

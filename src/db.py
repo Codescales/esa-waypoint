@@ -67,6 +67,39 @@ class RunParticipant(SQLModel, table=True):
 
 
 class Incentive(SQLModel, table=True):
+    """Incentive row — one record per split incentive text fragment.
+
+    ``participants_json`` wire format
+    ----------------------------------
+    Stores a JSON array of participant objects.  **All writers must use the
+    "raw import" key names** so that ``_incentive_to_dto`` in
+    ``repo_sqlite.py`` can deserialise both xlsx-imported rows and
+    API-created rows with identical logic.
+
+    Canonical keys (all string, all optional / default ""):
+    ::
+
+        [
+          {
+            "display":          str,   # runner display name
+            "twitch":           str,   # Twitch handle (lowercase)
+            "discord":          str,
+            "twitter":          str,
+            "pronouns":         str,
+            "pronunciation":    str,
+            "submission_id":    str | null,
+            "match_confidence": str,   # "primary" | "matched" | ""
+          },
+          ...
+        ]
+
+    The ``repo_sqlite._incentive_to_dto`` parser also accepts the legacy
+    DTO-key format (``display_name``, ``slug``) emitted before this
+    contract was established — it maps ``display_name`` → ``display_name``
+    and ``slug`` → ``slug`` as fallbacks — but new writers **must not**
+    produce that format.  See ADR 0016.
+    """
+
     __tablename__ = "incentive"
 
     uuid: str = Field(primary_key=True)
