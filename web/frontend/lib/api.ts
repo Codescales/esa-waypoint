@@ -249,7 +249,8 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (res.status === 401) {
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin")) {
-      window.location.href = "/login";
+      const redirect = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?redirect=${redirect}`;
     }
     throw new Error("Unauthorized");
   }
