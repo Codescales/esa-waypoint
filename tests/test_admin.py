@@ -125,6 +125,85 @@ class TestAdminPatchRunner:
         assert r.status_code == 400
 
 
+class TestAdminCreateRunner:
+    def test_create_runner(self, client, admin_cookies):
+        r = client.post(
+            "/api/admin/runners",
+            json={"display_name": "Fresh Runner", "twitch": "freshrunner", "pronouns": "he/him"},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 201
+        data = r.json()
+        assert data["slug"] == "freshrunner"  # derived from twitch
+        assert data["display_name"] == "Fresh Runner"
+        assert data["pronouns"] == "he/him"
+
+        # It now shows up in the listing.
+        r = client.get("/api/runners/freshrunner", cookies=admin_cookies)
+        assert r.status_code == 200
+
+    def test_create_runner_no_twitch_derives_slug(self, client, admin_cookies):
+        r = client.post(
+            "/api/admin/runners",
+            json={"display_name": "No Twitch Person"},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 201
+        assert r.json()["slug"].startswith("player-")
+
+    def test_create_runner_duplicate_conflict(self, client, admin_cookies):
+        # speedrunner1 already exists in the seed data.
+        r = client.post(
+            "/api/admin/runners",
+            json={"display_name": "Dupe", "twitch": "speedrunner1"},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 409
+
+    def test_create_runner_missing_name(self, client, admin_cookies):
+        r = client.post(
+            "/api/admin/runners",
+            json={"display_name": "   "},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 400
+
+    def test_create_runner_unauthorized(self, unauth_client):
+        r = unauth_client.post("/api/admin/runners", json={"display_name": "x"})
+        assert r.status_code == 401
+
+
+class TestAdminDeleteRunner:
+    def test_delete_runner_not_found(self, client, admin_cookies):
+        r = client.delete("/api/admin/runners/nonexistent", cookies=admin_cookies)
+        assert r.status_code == 404
+
+    def test_delete_runner_attached_to_run_blocked(self, client, admin_cookies):
+        # speedrunner1 is a participant on a seeded run.
+        r = client.delete("/api/admin/runners/speedrunner1", cookies=admin_cookies)
+        assert r.status_code == 409
+
+    def test_delete_runner_unattached_allowed(self, client, admin_cookies):
+        # Create a runner with no run participation, then delete it.
+        c = client.post(
+            "/api/admin/runners",
+            json={"display_name": "Disposable", "twitch": "disposable"},
+            cookies=admin_cookies,
+        )
+        assert c.status_code == 201
+
+        r = client.delete("/api/admin/runners/disposable", cookies=admin_cookies)
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+
+        r = client.get("/api/runners/disposable", cookies=admin_cookies)
+        assert r.status_code == 404
+
+    def test_delete_runner_unauthorized(self, unauth_client):
+        r = unauth_client.delete("/api/admin/runners/speedrunner1")
+        assert r.status_code == 401
+
+
 class TestAdminPatchRun:
     def test_patch_commentator(self, client, admin_cookies):
         slug = "super-mario-64__120-star__2026-07-11T1200"

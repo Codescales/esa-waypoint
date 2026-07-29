@@ -2,7 +2,15 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { getRunners, adminPatchRunner, type RunnerDTO, type RunnerPatch } from "@/lib/api";
+import {
+  getRunners,
+  adminPatchRunner,
+  createRunner,
+  deleteRunner,
+  type RunnerDTO,
+  type RunnerPatch,
+  type RunnerCreateRequest,
+} from "@/lib/api";
 
 function EditableTextCell({
   value,
@@ -99,6 +107,7 @@ export default function AdminRunnersPage() {
   const [runners, setRunners] = useState<RunnerDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     getRunners()
@@ -108,6 +117,31 @@ export default function AdminRunnersPage() {
 
   function updateRunner(updated: RunnerDTO) {
     setRunners((prev) => prev.map((r) => (r.slug === updated.slug ? updated : r)));
+  }
+
+  function addRunner(created: RunnerDTO) {
+    setRunners((prev) => [...prev, created]);
+  }
+
+  function removeRunner(slug: string) {
+    setRunners((prev) => prev.filter((r) => r.slug !== slug));
+  }
+
+  async function handleCreate(body: RunnerCreateRequest) {
+    const created = await createRunner(body);
+    addRunner(created);
+    setShowAddForm(false);
+  }
+
+  async function handleDelete(slug: string) {
+    if (!window.confirm("Delete this runner? This cannot be undone.")) return;
+    try {
+      await deleteRunner(slug);
+      removeRunner(slug);
+    } catch (e) {
+      console.error("Delete failed", e);
+      alert(String(e));
+    }
   }
 
   function patch(slug: string, field: keyof RunnerPatch) {
@@ -129,13 +163,28 @@ export default function AdminRunnersPage() {
         <p className="text-sm text-muted">{filtered.length} of {runners.length}</p>
       </div>
 
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by name or Twitch handle…"
-        className="input input-sm mb-4 w-full max-w-sm"
-      />
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or Twitch handle…"
+          className="input input-sm w-full max-w-sm"
+        />
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="btn btn-sm ml-auto"
+        >
+          {showAddForm ? "cancel" : "new runner"}
+        </button>
+      </div>
+
+      {showAddForm && (
+        <AddRunnerForm
+          onSubmit={handleCreate}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
 
       {loading ? (
         <p className="text-muted text-sm">Loading...</p>
@@ -151,6 +200,7 @@ export default function AdminRunnersPage() {
                 <th className="pb-2 pr-3 font-medium">Discord</th>
                 <th className="pb-2 pr-3 font-medium">Twitter</th>
                 <th className="pb-2 pr-3 font-medium">Runs</th>
+                <th className="pb-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -200,6 +250,15 @@ export default function AdminRunnersPage() {
                     <span className="text-xs">{r.twitter || <span className="text-muted/50">—</span>}</span>
                   </EditableTextCell>
                   <td className="py-2 pr-3 text-xs text-muted">{r.run_count}</td>
+                  <td className="py-2 pr-3">
+                    <button
+                      onClick={() => handleDelete(r.slug)}
+                      className="text-xs text-muted hover:text-remove transition-colors px-1"
+                      title="Delete runner"
+                    >
+                      ×
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -207,5 +266,144 @@ export default function AdminRunnersPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function AddRunnerForm({
+  onSubmit,
+  onCancel,
+}: {
+  onSubmit: (body: RunnerCreateRequest) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [displayName, setDisplayName] = useState("");
+  const [twitch, setTwitch] = useState("");
+  const [discord, setDiscord] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [pronouns, setPronouns] = useState("");
+  const [pronunciation, setPronunciation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!displayName.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onSubmit({
+        display_name: displayName.trim(),
+        twitch: twitch.trim() || undefined,
+        discord: discord.trim() || undefined,
+        twitter: twitter.trim() || undefined,
+        pronouns: pronouns.trim() || undefined,
+        pronunciation: pronunciation.trim() || undefined,
+      });
+      setDisplayName("");
+      setTwitch("");
+      setDiscord("");
+      setTwitter("");
+      setPronouns("");
+      setPronunciation("");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-4 p-4 card space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Display name *
+          </label>
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+            placeholder="Runner name"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Twitch
+          </label>
+          <input
+            type="text"
+            value={twitch}
+            onChange={(e) => setTwitch(e.target.value)}
+            placeholder="twitchhandle"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Discord
+          </label>
+          <input
+            type="text"
+            value={discord}
+            onChange={(e) => setDiscord(e.target.value)}
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Twitter
+          </label>
+          <input
+            type="text"
+            value={twitter}
+            onChange={(e) => setTwitter(e.target.value)}
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Pronouns
+          </label>
+          <input
+            type="text"
+            value={pronouns}
+            onChange={(e) => setPronouns(e.target.value)}
+            placeholder="they/them"
+            className="input input-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-[10px] font-data font-medium text-muted uppercase tracking-wider mb-0.5">
+            Pronunciation
+          </label>
+          <input
+            type="text"
+            value={pronunciation}
+            onChange={(e) => setPronunciation(e.target.value)}
+            className="input input-sm"
+          />
+        </div>
+      </div>
+      {error && <p className="text-xs text-remove">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={!displayName.trim() || saving}
+          className="btn btn-sm"
+        >
+          {saving ? "adding…" : "add runner"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="btn btn-sm btn-b2"
+        >
+          cancel
+        </button>
+      </div>
+    </form>
   );
 }

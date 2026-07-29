@@ -630,6 +630,15 @@ class RunnerPatchRequest(BaseModel):
     pronunciation: Optional[str] = None
 
 
+class RunnerCreateRequest(BaseModel):
+    display_name: str
+    twitch: str = ""
+    discord: str = ""
+    twitter: str = ""
+    pronouns: str = ""
+    pronunciation: str = ""
+
+
 class RunPatchRequest(BaseModel):
     game: Optional[str] = None
     category: Optional[str] = None
@@ -664,6 +673,46 @@ async def admin_patch_runner(
     if result is None:
         raise HTTPException(status_code=404, detail="Runner not found")
     return result
+
+
+@router.post("/runners", response_model=RunnerDTO, status_code=201)
+async def admin_create_runner(
+    body: RunnerCreateRequest,
+    _=Depends(current_admin),
+    repo: IncentiveRepo = Depends(get_repo),
+):
+    if not body.display_name.strip():
+        raise HTTPException(status_code=400, detail="display_name is required")
+    try:
+        runner = repo.create_runner(body.model_dump())
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    audit_log.write_audit(
+        os.path.dirname(config.DB_PATH),
+        "runner_create",
+        f"slug={runner.slug} display_name={runner.display_name}",
+    )
+    return runner
+
+
+@router.delete("/runners/{slug}")
+async def admin_delete_runner(
+    slug: str,
+    _=Depends(current_admin),
+    repo: IncentiveRepo = Depends(get_repo),
+):
+    try:
+        runner = repo.delete_runner(slug)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    if runner is None:
+        raise HTTPException(status_code=404, detail="Runner not found")
+    audit_log.write_audit(
+        os.path.dirname(config.DB_PATH),
+        "runner_delete",
+        f"slug={slug}",
+    )
+    return {"ok": True, "slug": slug}
 
 
 @router.patch("/runs/{slug}", response_model=RunDTO)

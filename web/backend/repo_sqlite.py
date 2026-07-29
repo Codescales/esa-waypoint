@@ -653,6 +653,72 @@ class SqliteIncentiveRepo:
             s.refresh(runner)
             return self._runner_to_dto(runner, s)
 
+    def create_runner(self, patch: dict) -> RunnerDTO:
+        """Manually create a runner (admin-only).
+
+        Derives `slug` from twitch/display_name via runner_slug (ADR 0002).
+        Raises HTTPException 409 if a runner with that slug already exists.
+        """
+        from fastapi import HTTPException
+
+        display_name = (patch.get("display_name") or "").strip()
+        twitch = (patch.get("twitch") or "").strip()
+
+        with Session(self._engine()) as s:
+            now = datetime.now(TZ).replace(tzinfo=None)
+            slug = runner_slug(twitch, display_name, 0)
+
+            existing = s.exec(select(Runner).where(Runner.slug == slug)).first()
+            if existing is not None:
+                raise HTTPException(status_code=409, detail="A runner with this identity already exists")
+
+            runner = Runner(
+                slug=slug,
+                display_name=display_name,
+                twitch=twitch,
+                discord=(patch.get("discord") or "").strip(),
+                twitter=(patch.get("twitter") or "").strip(),
+                pronouns=(patch.get("pronouns") or "").strip(),
+                pronunciation=(patch.get("pronunciation") or "").strip(),
+                created_at=now,
+                updated_at=now,
+            )
+            s.add(runner)
+            s.commit()
+            s.refresh(runner)
+            return self._runner_to_dto(runner, s)
+
+    def delete_runner(self, slug: str) -> Optional[RunnerDTO]:
+        """Hard-delete a runner (admin-only).
+
+        Refuses to delete (409) if the runner is still referenced by any
+        run's participants or has host notes attached, so run rosters and
+        historical note data are never silently orphaned.
+        """
+        from fastapi import HTTPException
+        from src.db import RunnerNote
+
+        with Session(self._engine()) as s:
+            runner = s.exec(select(Runner).where(Runner.slug == slug)).first()
+            if runner is None:
+                return None
+
+            in_run = s.exec(
+                select(RunParticipant).where(RunParticipant.runner_slug == slug)
+            ).first()
+            if in_run is not None:
+                raise HTTPException(status_code=409, detail="Cannot delete a runner attached to runs; remove them from run rosters first")
+            has_notes = s.exec(
+                select(RunnerNote).where(RunnerNote.runner_slug == slug)
+            ).first()
+            if has_notes is not None:
+                raise HTTPException(status_code=409, detail="Cannot delete a runner with notes; remove them first")
+
+            dto = self._runner_to_dto(runner, s)
+            s.delete(runner)
+            s.commit()
+            return dto
+
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]:
         with Session(self._engine()) as s:
             run = s.exec(select(Run).where(Run.slug == slug)).first()

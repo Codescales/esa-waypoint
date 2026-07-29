@@ -119,6 +119,10 @@ class IncentiveRepo(Protocol):
 
     def update_runner(self, slug: str, patch: dict) -> Optional[RunnerDTO]: ...
 
+    def create_runner(self, patch: dict) -> RunnerDTO: ...
+
+    def delete_runner(self, slug: str) -> Optional[RunnerDTO]: ...
+
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]: ...
 
     def create_run(self, body: RunCreateRequest) -> RunDTO: ...
@@ -343,6 +347,12 @@ class XlsxIncentiveRepo:
 
     def update_runner(self, slug: str, patch: dict) -> Optional[RunnerDTO]:
         raise NotImplementedError("update_runner requires REPO_TYPE=sqlite")
+
+    def create_runner(self, patch: dict) -> RunnerDTO:
+        raise NotImplementedError("create_runner requires REPO_TYPE=sqlite")
+
+    def delete_runner(self, slug: str) -> Optional[RunnerDTO]:
+        raise NotImplementedError("delete_runner requires REPO_TYPE=sqlite")
 
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]:
         raise NotImplementedError("update_run requires REPO_TYPE=sqlite")

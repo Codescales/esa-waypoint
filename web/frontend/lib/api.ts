@@ -431,6 +431,28 @@ export function adminPatchRunner(slug: string, patch: RunnerPatch): Promise<Runn
   });
 }
 
+export interface RunnerCreateRequest {
+  display_name: string;
+  twitch?: string;
+  discord?: string;
+  twitter?: string;
+  pronouns?: string;
+  pronunciation?: string;
+}
+
+export function createRunner(body: RunnerCreateRequest): Promise<RunnerDTO> {
+  return fetchAdmin("/api/admin/runners", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteRunner(slug: string): Promise<{ ok: boolean; slug: string }> {
+  return fetchAdmin(`/api/admin/runners/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+  });
+}
+
 export interface RunPatch {
   commentator?: string;
   pronouns?: string;
