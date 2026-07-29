@@ -771,9 +771,10 @@ class SqliteIncentiveRepo:
     def delete_run(self, slug: str) -> Optional[RunDTO]:
         """Hard-delete a run and its participant rows (admin-only).
 
-        Refuses to delete (409) if the run still has incentives or
+        Refuses to delete (409) if the run still has active incentives or
         host notes attached, so historical incentive/note data is
-        never silently orphaned.
+        never silently orphaned. Soft-deleted incentives (status='Removed')
+        are already logically gone and do not block deletion.
         """
         from fastapi import HTTPException
         from src.db import Note
@@ -783,7 +784,12 @@ class SqliteIncentiveRepo:
             if run is None:
                 return None
 
-            has_incentives = s.exec(select(Incentive).where(Incentive.run_id == run.id)).first()
+            has_incentives = s.exec(
+                select(Incentive).where(
+                    Incentive.run_id == run.id,
+                    Incentive.status != "Removed",
+                )
+            ).first()
             if has_incentives is not None:
                 raise HTTPException(status_code=409, detail="Cannot delete a run with incentives; remove them first")
             has_notes = s.exec(select(Note).where(Note.run_id == run.id)).first()
@@ -795,6 +801,15 @@ class SqliteIncentiveRepo:
             participants = s.exec(select(RunParticipant).where(RunParticipant.run_id == run.id)).all()
             for rp in participants:
                 s.delete(rp)
+            # Purge soft-deleted incentives so no FK rows are orphaned.
+            removed_incentives = s.exec(
+                select(Incentive).where(
+                    Incentive.run_id == run.id,
+                    Incentive.status == "Removed",
+                )
+            ).all()
+            for inc in removed_incentives:
+                s.delete(inc)
             s.delete(run)
             s.commit()
             return dto

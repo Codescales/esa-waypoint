@@ -243,6 +243,25 @@ class TestAdminDeleteRun:
         r = client.delete(f"/api/admin/runs/{slug}", cookies=admin_cookies)
         assert r.status_code == 409
 
+    def test_delete_run_with_only_removed_incentives_allowed(self, client, admin_cookies):
+        """A run whose incentives are all soft-deleted (status='Removed')
+        should be deletable — removed incentives are logically gone and
+        must not trip the 409 guard."""
+        slug = "super-mario-64__120-star__2026-07-11T1200"
+
+        # Soft-delete the run's incentive (sets status='Removed').
+        r = client.delete("/api/incentives/inc-001", cookies=admin_cookies)
+        assert r.status_code == 200
+        assert r.json()["status"] == "Removed"
+
+        # Deletion should now succeed instead of returning 409.
+        r = client.delete(f"/api/admin/runs/{slug}", cookies=admin_cookies)
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+
+        r = client.get(f"/api/runs/{slug}", cookies=admin_cookies)
+        assert r.status_code == 404
+
     def test_delete_unauthorized(self, unauth_client):
         r = unauth_client.delete("/api/admin/runs/some-slug")
         assert r.status_code == 401
