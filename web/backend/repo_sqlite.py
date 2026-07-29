@@ -13,7 +13,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from .models import (
     IncentiveDTO, IncentivePatch, IncentiveCreateRequest,
@@ -423,9 +423,11 @@ class SqliteIncentiveRepo:
             return self._runner_to_dto(runner, s)
 
     def runners(self) -> list[RunnerDTO]:
-        """Return all runners ordered by display_name."""
+        """Return all runners ordered by display_name (case-insensitive)."""
         with Session(self._engine()) as s:
-            all_runners = s.exec(select(Runner).order_by(Runner.display_name)).all()
+            all_runners = s.exec(
+                select(Runner).order_by(func.lower(Runner.display_name))
+            ).all()
             return [self._runner_to_dto(r, s) for r in all_runners]
 
     def _runner_to_dto(self, runner: Runner, session) -> RunnerDTO:
@@ -718,6 +720,63 @@ class SqliteIncentiveRepo:
             s.delete(runner)
             s.commit()
             return dto
+
+    def merge_runners(self, survivor_slug: str, duplicate_slug: str) -> Optional[RunnerDTO]:
+        """Merge a duplicate runner into a survivor (admin-only).
+
+        Reassigns the duplicate's run participations and runner notes to the
+        survivor, then deletes the duplicate Runner row. The survivor's
+        profile fields are kept as-is. RunParticipant rows are deduplicated
+        on run_id so the UNIQUE(run_id, runner_slug) constraint is honoured
+        (if both runners were on the same run, the duplicate's row is dropped).
+
+        Returns the updated survivor DTO, or None if either runner is not
+        found. Raises HTTPException 400 if survivor == duplicate.
+        """
+        from fastapi import HTTPException
+        from src.db import RunnerNote
+
+        if survivor_slug == duplicate_slug:
+            raise HTTPException(status_code=400, detail="Cannot merge a runner into itself")
+
+        with Session(self._engine()) as s:
+            survivor = s.exec(select(Runner).where(Runner.slug == survivor_slug)).first()
+            duplicate = s.exec(select(Runner).where(Runner.slug == duplicate_slug)).first()
+            if survivor is None or duplicate is None:
+                return None
+
+            now = datetime.now(TZ).replace(tzinfo=None)
+
+            # Runs the survivor is already on — avoid UNIQUE(run_id, runner_slug).
+            survivor_run_ids = {
+                rp.run_id
+                for rp in s.exec(
+                    select(RunParticipant).where(RunParticipant.runner_slug == survivor_slug)
+                ).all()
+            }
+            dup_participants = s.exec(
+                select(RunParticipant).where(RunParticipant.runner_slug == duplicate_slug)
+            ).all()
+            for rp in dup_participants:
+                if rp.run_id in survivor_run_ids:
+                    s.delete(rp)  # survivor already on this run
+                else:
+                    rp.runner_slug = survivor_slug
+                    rp.updated_at = now
+                    s.add(rp)
+
+            # Reassign runner notes.
+            for note in s.exec(
+                select(RunnerNote).where(RunnerNote.runner_slug == duplicate_slug)
+            ).all():
+                note.runner_slug = survivor_slug
+                note.updated_at = now
+                s.add(note)
+
+            s.delete(duplicate)
+            s.commit()
+            s.refresh(survivor)
+            return self._runner_to_dto(survivor, s)
 
     def update_run(self, slug: str, patch: dict) -> Optional[RunDTO]:
         with Session(self._engine()) as s:

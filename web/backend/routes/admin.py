@@ -639,6 +639,11 @@ class RunnerCreateRequest(BaseModel):
     pronunciation: str = ""
 
 
+class RunnerMergeRequest(BaseModel):
+    survivor_slug: str
+    duplicate_slug: str
+
+
 class RunPatchRequest(BaseModel):
     game: Optional[str] = None
     category: Optional[str] = None
@@ -713,6 +718,26 @@ async def admin_delete_runner(
         f"slug={slug}",
     )
     return {"ok": True, "slug": slug}
+
+
+@router.post("/runners/merge", response_model=RunnerDTO)
+async def admin_merge_runners(
+    body: RunnerMergeRequest,
+    _=Depends(current_admin),
+    repo: IncentiveRepo = Depends(get_repo),
+):
+    try:
+        runner = repo.merge_runners(body.survivor_slug, body.duplicate_slug)
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    if runner is None:
+        raise HTTPException(status_code=404, detail="Runner not found")
+    audit_log.write_audit(
+        os.path.dirname(config.DB_PATH),
+        "runner_merge",
+        f"survivor={body.survivor_slug} duplicate={body.duplicate_slug}",
+    )
+    return runner
 
 
 @router.patch("/runs/{slug}", response_model=RunDTO)

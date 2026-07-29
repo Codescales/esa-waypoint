@@ -453,6 +453,13 @@ export function deleteRunner(slug: string): Promise<{ ok: boolean; slug: string 
   });
 }
 
+export function mergeRunners(survivorSlug: string, duplicateSlug: string): Promise<RunnerDTO> {
+  return fetchAdmin("/api/admin/runners/merge", {
+    method: "POST",
+    body: JSON.stringify({ survivor_slug: survivorSlug, duplicate_slug: duplicateSlug }),
+  });
+}
+
 export interface RunPatch {
   commentator?: string;
   pronouns?: string;

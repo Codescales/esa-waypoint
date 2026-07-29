@@ -279,6 +279,115 @@ class TestUpdateRun:
         assert repo.update_runner("nonexistent", {"display_name": "x"}) is None
 
 
+class TestRunnerMerge:
+    def _seed_dupe(self, repo, db_path):
+        """Seed a survivor + duplicate runner. Duplicate is on the run and
+        has a runner note; survivor is on no runs."""
+        from src.db import RunnerNote
+        _seed(repo, db_path)  # creates run + runner1 (on the run)
+        engine = make_engine(db_path)
+        now = _naive()
+        with Session(engine) as s:
+            s.add(Runner(slug="survivor", display_name="Survivor",
+                         twitch="survivor", created_at=now, updated_at=now))
+            s.add(Runner(slug="dupe", display_name="Dupe",
+                         twitch="dupe", created_at=now, updated_at=now))
+            s.flush()
+            run = s.exec(select(Run).where(Run.slug == "test-game__any__2026-07-11T1200")).first()
+            s.add(RunParticipant(
+                run_id=run.id, runner_slug="dupe",
+                display_name="Dupe", twitch="dupe",
+                imported_at=now, updated_at=now,
+            ))
+            s.add(RunnerNote(
+                runner_slug="dupe", host_id=1, host_name="Host",
+                body="note on dupe", created_at=now, updated_at=now,
+            ))
+            s.commit()
+        engine.dispose()
+
+    def test_merge_reassigns_participants_and_notes(self, repo, db_path):
+        from src.db import RunnerNote
+        self._seed_dupe(repo, db_path)
+
+        result = repo.merge_runners("survivor", "dupe")
+        assert result is not None
+        assert result.slug == "survivor"
+
+        engine = make_engine(db_path)
+        with Session(engine) as s:
+            # Duplicate runner deleted.
+            assert s.exec(select(Runner).where(Runner.slug == "dupe")).first() is None
+            # Participant reassigned to survivor.
+            rps = s.exec(select(RunParticipant).where(RunParticipant.runner_slug == "dupe")).all()
+            assert rps == []
+            surv_rps = s.exec(select(RunParticipant).where(RunParticipant.runner_slug == "survivor")).all()
+            assert len(surv_rps) == 1
+            # Note reassigned.
+            notes = s.exec(select(RunnerNote).where(RunnerNote.runner_slug == "survivor")).all()
+            assert len(notes) == 1
+        engine.dispose()
+
+    def test_merge_dedupes_shared_run(self, repo, db_path):
+        """If both runners are on the same run, the duplicate's participant
+        row is dropped (no UNIQUE(run_id, runner_slug) violation)."""
+        self._seed_dupe(repo, db_path)
+        engine = make_engine(db_path)
+        now = _naive()
+        with Session(engine) as s:
+            run = s.exec(select(Run).where(Run.slug == "test-game__any__2026-07-11T1200")).first()
+            # Put survivor on the same run as dupe.
+            s.add(RunParticipant(
+                run_id=run.id, runner_slug="survivor",
+                display_name="Survivor", twitch="survivor",
+                imported_at=now, updated_at=now,
+            ))
+            s.commit()
+        engine.dispose()
+
+        result = repo.merge_runners("survivor", "dupe")
+        assert result is not None
+
+        engine = make_engine(db_path)
+        with Session(engine) as s:
+            run = s.exec(select(Run).where(Run.slug == "test-game__any__2026-07-11T1200")).first()
+            surv_rps = s.exec(
+                select(RunParticipant).where(
+                    RunParticipant.runner_slug == "survivor",
+                    RunParticipant.run_id == run.id,
+                )
+            ).all()
+            assert len(surv_rps) == 1  # not duplicated
+        engine.dispose()
+
+    def test_merge_missing_runner_returns_none(self, repo, db_path):
+        _seed(repo, db_path)
+        assert repo.merge_runners("runner1", "nonexistent") is None
+        assert repo.merge_runners("nonexistent", "runner1") is None
+
+    def test_merge_into_self_raises(self, repo, db_path):
+        from fastapi import HTTPException
+        _seed(repo, db_path)
+        with pytest.raises(HTTPException) as exc:
+            repo.merge_runners("runner1", "runner1")
+        assert exc.value.status_code == 400
+
+
+class TestRunnerSort:
+    def test_runners_sorted_case_insensitive(self, repo, db_path):
+        engine = make_engine(db_path)
+        now = _naive()
+        with Session(engine) as s:
+            for slug, name in [("a1", "apple"), ("b1", "Banana"), ("c1", "cherry")]:
+                s.add(Runner(slug=slug, display_name=name, twitch=slug,
+                             created_at=now, updated_at=now))
+            s.commit()
+        engine.dispose()
+
+        names = [r.display_name for r in repo.runners()]
+        assert names == ["apple", "Banana", "cherry"]
+
+
 class TestJobs:
     def test_create_and_get(self, repo):
         job = repo.create_job(kind="test")

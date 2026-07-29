@@ -204,6 +204,49 @@ class TestAdminDeleteRunner:
         assert r.status_code == 401
 
 
+class TestAdminMergeRunners:
+    def test_merge_runners(self, client, admin_cookies):
+        # Create two unattached runners, then merge one into the other.
+        client.post("/api/admin/runners", json={"display_name": "Keep Me", "twitch": "keepme"}, cookies=admin_cookies)
+        client.post("/api/admin/runners", json={"display_name": "Drop Me", "twitch": "dropme"}, cookies=admin_cookies)
+
+        r = client.post(
+            "/api/admin/runners/merge",
+            json={"survivor_slug": "keepme", "duplicate_slug": "dropme"},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 200
+        assert r.json()["slug"] == "keepme"
+
+        # Duplicate is gone.
+        assert client.get("/api/runners/dropme", cookies=admin_cookies).status_code == 404
+        # Survivor remains.
+        assert client.get("/api/runners/keepme", cookies=admin_cookies).status_code == 200
+
+    def test_merge_runners_not_found(self, client, admin_cookies):
+        r = client.post(
+            "/api/admin/runners/merge",
+            json={"survivor_slug": "speedrunner1", "duplicate_slug": "nonexistent"},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 404
+
+    def test_merge_runners_self(self, client, admin_cookies):
+        r = client.post(
+            "/api/admin/runners/merge",
+            json={"survivor_slug": "speedrunner1", "duplicate_slug": "speedrunner1"},
+            cookies=admin_cookies,
+        )
+        assert r.status_code == 400
+
+    def test_merge_runners_unauthorized(self, unauth_client):
+        r = unauth_client.post(
+            "/api/admin/runners/merge",
+            json={"survivor_slug": "a", "duplicate_slug": "b"},
+        )
+        assert r.status_code == 401
+
+
 class TestAdminPatchRun:
     def test_patch_commentator(self, client, admin_cookies):
         slug = "super-mario-64__120-star__2026-07-11T1200"
